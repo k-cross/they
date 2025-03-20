@@ -1,22 +1,80 @@
 use super::{ALUFlag, CPU};
 
-// load functions
-fn ld_bc_n16(c: &mut CPU) {
-    let val = c.get_word_instr();
-    c.registers.b = (val >> 8) as u8;
-    c.registers.c = val as u8;
+// private to make functions more generic since a lot of the handling will be
+// the same.
+enum Reg {
+    A,
+    B,
+    C,
+    D,
+    E,
+    FLAGS,
+    H,
+    L,
 }
 
-fn ld_bc_a(c: &mut CPU) {
-    let addr = ((c.registers.b as u16) << 8) | c.registers.c as u16;
+fn ld_r16_n16(c: &mut CPU, r1: Reg, r2: Reg) {
+    // cycles 3
+    let val = c.get_word_instr();
+    write_reg(c, &r1, (val >> 8) as u8);
+    write_reg(c, &r2, val as u8);
+}
+
+fn ld_r16m_a(c: &mut CPU, r1: Reg, r2: Reg) {
+    // cycles 2
+    let addr = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
     c.memory.write_byte(addr, c.registers.acc);
 }
 
-fn inc_bc(c: &mut CPU) {
-    // no flags
-    let val = (((c.registers.b as u16) << 8) | c.registers.c as u16).wrapping_add(1);
-    c.registers.b = (val >> 8) as u8;
-    c.registers.c = val as u8;
+fn inc_r16(c: &mut CPU, r1: Reg, r2: Reg) {
+    // cycles 2
+    // no flags are set for overflows
+    let val = ((read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16).wrapping_add(1);
+    write_reg(c, &r1, (val >> 8) as u8);
+    write_reg(c, &r2, val as u8);
+}
+
+fn inc_r8(c: &mut CPU, r: Reg) {
+    // cycles 1
+    let v = read_reg(c, &r);
+    match v.checked_add(1) {
+        Some(vv) => {
+            write_reg(c, &r, vv);
+            if (0b00001000 & v == 0) && (0b00001000 & vv != 0) {
+                c.registers.flags = ALUFlag::H as u8;
+            }
+        }
+        None => {
+            write_reg(c, &r, 0);
+            c.registers.flags = ALUFlag::C as u8;
+        }
+    }
+}
+
+fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
+    match r {
+        Reg::A => c.registers.acc,
+        Reg::B => c.registers.b,
+        Reg::C => c.registers.c,
+        Reg::D => c.registers.d,
+        Reg::E => c.registers.e,
+        Reg::H => c.registers.high,
+        Reg::L => c.registers.low,
+        Reg::FLAGS => c.registers.flags,
+    }
+}
+
+fn write_reg(c: &mut CPU, r: &Reg, v: u8) {
+    match r {
+        Reg::A => c.registers.acc = v,
+        Reg::B => c.registers.b = v,
+        Reg::C => c.registers.c = v,
+        Reg::D => c.registers.d = v,
+        Reg::E => c.registers.e = v,
+        Reg::H => c.registers.high = v,
+        Reg::L => c.registers.low = v,
+        Reg::FLAGS => c.registers.flags = v,
+    }
 }
 
 pub(crate) fn operations(c: &mut CPU, opcode: u8) {
@@ -26,16 +84,16 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) {
             ()
         }
         0x1 => {
-            ld_bc_n16(c);
-            // cycles 3
+            ld_r16_n16(c, Reg::B, Reg::C);
         }
         0x2 => {
-            ld_bc_a(c);
-            // cycles 2
+            ld_r16m_a(c, Reg::B, Reg::C);
         }
         0x3 => {
-            inc_bc(c);
-            // cycles 2
+            inc_r16(c, Reg::B, Reg::C);
+        }
+        0x4 => {
+            inc_r8(c, Reg::B);
         }
         _ => eprintln!("OpCode is not implemented: {}", opcode),
     }
