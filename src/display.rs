@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Tile {
     pixels: [[u8; 8]; 8],
 }
@@ -7,6 +8,7 @@ pub struct Tile {
 /// pixels being rendered off screen too. Only 10 sprites can be used at a time
 /// but 40 can be represented in memory. Tiles can overlap each other, as the
 /// full screen is only 144 x 160 pixels.
+#[derive(Debug)]
 pub struct Display {
     tiles: [Tile; 384],
     // the (x, y) position of what can be shown
@@ -15,8 +17,19 @@ pub struct Display {
     sprites: [Sprite; 40],
 }
 
+pub struct ObjectAttributeMap {
+    x: u8,
+    y: u8,
+    tile_number: u8,
+    priority: u8,
+    flip_x: bool,
+    flip_y: bool,
+    palette: bool,
+}
+
 /// There are two types of sprites that can be used, one that is 8 x 8 pixels
 /// and one that is 8 x 16 pixels
+#[derive(Debug)]
 pub enum Sprite {
     Big([[u8; 8]; 16]),
     Little([[u8; 8]; 8]),

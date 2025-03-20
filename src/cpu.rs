@@ -1,4 +1,8 @@
+use crate::ram::Memory;
+use opcodes::operations;
 use std::fmt;
+
+pub mod opcodes;
 
 /// The LR35902 CPU Registers
 ///
@@ -101,6 +105,7 @@ pub enum Interrupt {
 #[derive(Debug)]
 pub struct CPU {
     pub registers: Registers,
+    pub memory: Memory,
 }
 
 impl CPU {
@@ -108,6 +113,7 @@ impl CPU {
     pub fn new() -> CPU {
         CPU {
             registers: Registers::new(),
+            memory: Memory::new(),
         }
     }
 
@@ -117,13 +123,13 @@ impl CPU {
         todo!();
     }
 
-    fn operation(opcode: u16) -> u8 {
-        match opcode {
-            0x00 => 1,
-            op => {
-                println!("warning! opcode: {}, not implemented", op);
-                0
-            }
-        }
+    fn get_word(&mut self) -> u16 {
+        let w = self.memory.read_word(self.registers.pc);
+        self.registers.pc += 2;
+        w
+    }
+
+    fn exec(&mut self, opcode: u8) {
+        operations(self, opcode);
     }
 }
