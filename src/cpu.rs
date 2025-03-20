@@ -82,11 +82,6 @@ pub enum ALUFlag {
     Z = 0b10000000,
 }
 
-pub enum OpCode {
-    Add = 0x00,
-    Load = 0x01,
-}
-
 pub enum Interrupt {
     // LCD has drawn a frame
     VBlank,
@@ -102,6 +97,8 @@ pub enum Interrupt {
     Halt,
 }
 
+/// The CPU contains registers and the system memory because it must access it
+/// when executing instructions.
 #[derive(Debug)]
 pub struct CPU {
     pub registers: Registers,
@@ -123,13 +120,24 @@ impl CPU {
         todo!();
     }
 
-    fn get_word(&mut self) -> u16 {
+    pub fn get_instr(&mut self) -> u8 {
+        let b = self.memory.read_byte(self.registers.pc);
+        self.registers.pc += 1;
+        b
+    }
+
+    pub fn get_word_instr(&mut self) -> u16 {
         let w = self.memory.read_word(self.registers.pc);
         self.registers.pc += 2;
         w
     }
 
-    fn exec(&mut self, opcode: u8) {
+    /// Interface that wraps the execution of instructions but there are a
+    /// couple of types to undersand:
+    ///
+    /// - Immediate Values: accessed via memory using current PC value
+    pub fn exec(&mut self) {
+        let opcode = self.get_instr();
         operations(self, opcode);
     }
 }
