@@ -20,6 +20,19 @@ fn ld_r8_n8(c: &mut CPU, r: Reg) -> u8 {
     2
 }
 
+fn ld_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = read_reg(c, &r2);
+    write_reg(c, &r1, v);
+    1
+}
+
+fn ld_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
+    let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
+    let v = c.memory.read_byte(addr);
+    write_reg(c, &r1, v);
+    2
+}
+
 fn ld_r16m_n8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = c.get_instr();
     let addr = (read_reg(c, &r1) as usize) << 8 | read_reg(c, &r2) as usize;
@@ -37,6 +50,13 @@ fn ld_r16_n16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
 fn ld_sp_n16(c: &mut CPU) -> u8 {
     c.registers.sp = c.get_word_instr();
     3
+}
+
+fn ld_r16m_r8(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
+    let addr = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    let v = read_reg(c, &r3);
+    c.memory.write_byte(addr, v);
+    2
 }
 
 fn ld_r16m_a(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
@@ -184,6 +204,11 @@ fn dec_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     2
 }
 
+fn dec_sp(c: &mut CPU) -> u8 {
+    c.registers.sp = c.registers.sp.wrapping_sub(1);
+    2
+}
+
 fn rlca(c: &mut CPU) -> u8 {
     let _ = rlc(c, Reg::A);
     1
@@ -292,6 +317,28 @@ fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     2
 }
 
+fn add_r16_sp(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let sp = c.registers.sp;
+    let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    match v.checked_add(sp) {
+        Some(vv) => {
+            c.set_flag(
+                ALUFlag::H,
+                (0b00010000_00000000 & v == 0) && (0b00010000_00000000 & vv != 0),
+            );
+            write_reg(c, &r1, (vv >> 8) as u8);
+            write_reg(c, &r2, vv as u8);
+        }
+        None => {
+            write_reg(c, &r1, 0);
+            write_reg(c, &r2, 0);
+            c.set_flag(ALUFlag::C, true);
+        }
+    }
+    c.set_flag(ALUFlag::N, false);
+    2
+}
+
 fn scf(c: &mut CPU) -> u8 {
     c.set_flag(ALUFlag::C, true);
     1
@@ -341,6 +388,17 @@ fn jr_nc_e8(c: &mut CPU) -> u8 {
     }
 }
 
+fn jr_c_e8(c: &mut CPU) -> u8 {
+    if c.check_flag(ALUFlag::C) {
+        let offset = c.get_instr() as i8;
+        c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
+        3
+    } else {
+        c.registers.pc += 1;
+        2
+    }
+}
+
 fn daa(c: &mut CPU) -> u8 {
     let mut acc = c.registers.acc;
     let mut adjust = if c.check_flag(ALUFlag::C) { 0x60 } else { 0x00 };
@@ -373,6 +431,16 @@ fn cpl(c: &mut CPU) -> u8 {
     c.registers.acc = !c.registers.acc;
     c.set_flag(ALUFlag::N, true);
     c.set_flag(ALUFlag::H, true);
+    1
+}
+
+fn ccf(c: &mut CPU) -> u8 {
+    c.registers.flags = c.registers.flags & 0b1001_1111;
+    if c.check_flag(ALUFlag::C) {
+        c.set_flag(ALUFlag::C, false);
+    } else {
+        c.set_flag(ALUFlag::C, true);
+    }
     1
 }
 
@@ -464,7 +532,68 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0x35 => dec_r16m(c, Reg::H, Reg::L),
         0x36 => ld_r16m_n8(c, Reg::H, Reg::L),
         0x37 => scf(c),
+        0x38 => jr_c_e8(c),
+        0x39 => add_r16_sp(c, Reg::H, Reg::L),
         0x3A => ld_a_hldm(c),
+        0x3B => dec_sp(c),
+        0x3C => inc_r8(c, Reg::A),
+        0x3D => dec_r8(c, Reg::A),
+        0x3E => ld_r8_n8(c, Reg::A),
+        0x3F => ccf(c),
+        0x40 => ld_r8_r8(c, Reg::B, Reg::B),
+        0x41 => ld_r8_r8(c, Reg::B, Reg::C),
+        0x42 => ld_r8_r8(c, Reg::B, Reg::D),
+        0x43 => ld_r8_r8(c, Reg::B, Reg::E),
+        0x44 => ld_r8_r8(c, Reg::B, Reg::H),
+        0x45 => ld_r8_r8(c, Reg::B, Reg::L),
+        0x46 => ld_r8_r16m(c, Reg::B, Reg::H, Reg::L),
+        0x47 => ld_r8_r8(c, Reg::B, Reg::A),
+        0x48 => ld_r8_r8(c, Reg::C, Reg::B),
+        0x49 => ld_r8_r8(c, Reg::C, Reg::C),
+        0x4A => ld_r8_r8(c, Reg::C, Reg::D),
+        0x4B => ld_r8_r8(c, Reg::C, Reg::E),
+        0x4C => ld_r8_r8(c, Reg::C, Reg::H),
+        0x4D => ld_r8_r8(c, Reg::C, Reg::L),
+        0x4E => ld_r8_r16m(c, Reg::C, Reg::H, Reg::L),
+        0x4F => ld_r8_r8(c, Reg::C, Reg::A),
+        0x50 => ld_r8_r8(c, Reg::D, Reg::B),
+        0x51 => ld_r8_r8(c, Reg::D, Reg::C),
+        0x52 => ld_r8_r8(c, Reg::D, Reg::D),
+        0x53 => ld_r8_r8(c, Reg::D, Reg::E),
+        0x54 => ld_r8_r8(c, Reg::D, Reg::H),
+        0x55 => ld_r8_r8(c, Reg::D, Reg::L),
+        0x56 => ld_r8_r16m(c, Reg::D, Reg::H, Reg::L),
+        0x57 => ld_r8_r8(c, Reg::D, Reg::A),
+        0x58 => ld_r8_r8(c, Reg::E, Reg::B),
+        0x59 => ld_r8_r8(c, Reg::E, Reg::C),
+        0x5A => ld_r8_r8(c, Reg::E, Reg::D),
+        0x5B => ld_r8_r8(c, Reg::E, Reg::E),
+        0x5C => ld_r8_r8(c, Reg::E, Reg::H),
+        0x5D => ld_r8_r8(c, Reg::E, Reg::L),
+        0x5E => ld_r8_r16m(c, Reg::E, Reg::H, Reg::L),
+        0x5F => ld_r8_r8(c, Reg::E, Reg::A),
+        0x60 => ld_r8_r8(c, Reg::H, Reg::B),
+        0x61 => ld_r8_r8(c, Reg::H, Reg::C),
+        0x62 => ld_r8_r8(c, Reg::H, Reg::D),
+        0x63 => ld_r8_r8(c, Reg::H, Reg::E),
+        0x64 => ld_r8_r8(c, Reg::H, Reg::H),
+        0x65 => ld_r8_r8(c, Reg::H, Reg::L),
+        0x66 => ld_r8_r16m(c, Reg::H, Reg::H, Reg::L),
+        0x67 => ld_r8_r8(c, Reg::H, Reg::A),
+        0x68 => ld_r8_r8(c, Reg::L, Reg::B),
+        0x69 => ld_r8_r8(c, Reg::L, Reg::C),
+        0x6A => ld_r8_r8(c, Reg::L, Reg::D),
+        0x6B => ld_r8_r8(c, Reg::L, Reg::E),
+        0x6C => ld_r8_r8(c, Reg::L, Reg::H),
+        0x6D => ld_r8_r8(c, Reg::L, Reg::L),
+        0x6E => ld_r8_r16m(c, Reg::L, Reg::H, Reg::L),
+        0x6F => ld_r8_r8(c, Reg::L, Reg::A),
+        0x70 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::B),
+        0x71 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::C),
+        0x72 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::D),
+        0x73 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::E),
+        0x74 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::H),
+        0x75 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::L),
         _ => {
             eprintln!("OpCode is not implemented: {}", opcode);
             1
