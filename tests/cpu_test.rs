@@ -14,7 +14,7 @@ fn setup(opcode: u8) -> CPU {
     cpu.registers.low = 0;
     cpu.registers.pc = 0;
     cpu.registers.sp = 0;
-    cpu.memory.ram[0x0202] = 1;
+    cpu.memory.ram[0x0202] = 0xAA;
     cpu
 }
 
@@ -180,4 +180,57 @@ fn test_add_hl_r16() {
     assert_eq!(cpu.registers.high, 0x0);
     assert_eq!(cpu.registers.low, 0x0);
     assert_eq!(cpu.registers.flags, ALUFlag::C as u8);
+}
+
+#[test]
+fn test_ld_a_r16m() {
+    // opcode where r16 is registers(b,c)
+    let mut cpu = setup(0xA);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0xAA);
+    assert_eq!(cpu.registers.b, 0x2);
+    assert_eq!(cpu.registers.c, 0x2);
+    assert_eq!(cpu.memory.ram[0x0202], 0xAA);
+}
+
+#[test]
+fn test_dec_r16() {
+    // specific opcode for register b
+    let mut cpu = setup(0xB);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.b, 0x2);
+    assert_eq!(cpu.registers.c, 0x1);
+}
+
+#[test]
+fn test_rrca() {
+    // specific opcode for register a
+    let mut cpu = setup(0xF);
+    cpu.registers.acc = 0b100;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0b10);
+    assert_eq!(cpu.registers.flags, 0);
+
+    // with flags
+    cpu.registers.pc = 0;
+    cpu.registers.acc = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0b0111_1111);
+    assert_eq!(cpu.registers.flags, ALUFlag::C as u8);
+}
+
+#[test]
+fn test_jr_e8() {
+    let i: i8 = -5;
+    // specific opcode for register a
+    let mut cpu = setup(0x18);
+    cpu.memory.ram[7] = 0x18;
+    cpu.registers.pc = 7;
+    cpu.memory.ram[8] = i as u8;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x4);
 }

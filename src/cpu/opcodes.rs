@@ -32,10 +32,17 @@ fn ld_r16m_a(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     c.memory.write_byte(addr, c.registers.acc);
     2
 }
+
 fn ld_a16m_sp(c: &mut CPU) -> u8 {
     let addr = c.get_word_instr();
     c.memory.write_word(addr, c.registers.sp);
     3
+}
+
+fn ld_a_r16m(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let addr = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    c.registers.acc = c.memory.read_byte(addr);
+    2
 }
 
 fn inc_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
@@ -84,6 +91,13 @@ fn dec_r8(c: &mut CPU, r: Reg) -> u8 {
     1
 }
 
+fn dec_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = ((read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16).wrapping_sub(1);
+    write_reg(c, &r1, (v >> 8) as u8);
+    write_reg(c, &r2, v as u8);
+    2
+}
+
 fn rlca(c: &mut CPU) -> u8 {
     let _ = rlc(c, Reg::A);
     1
@@ -126,6 +140,22 @@ fn rl(c: &mut CPU, r: Reg) -> u8 {
     2
 }
 
+fn rrca(c: &mut CPU) -> u8 {
+    let _ = rrc(c, Reg::A);
+    1
+}
+
+fn rrc(c: &mut CPU, r: Reg) -> u8 {
+    let v = read_reg(c, &r);
+    if 0b01 & v == 0 {
+        write_reg(c, &r, v >> 1);
+    } else {
+        write_reg(c, &r, v >> 1);
+        c.registers.flags = ALUFlag::C as u8;
+    }
+    2
+}
+
 fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let hl = (c.registers.high as u16) << 8 | c.registers.low as u16;
     let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
@@ -144,6 +174,17 @@ fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
         }
     }
     2
+}
+
+fn stop_n8(_c: &mut CPU) -> u8 {
+    // mostly used to switch speeds, ignoring for now
+    todo!()
+}
+
+fn jr_e8(c: &mut CPU) -> u8 {
+    let offset = c.get_instr() as i8;
+    c.registers.pc = ((c.registers.pc as i32) + (offset as i32)) as u16;
+    3
 }
 
 fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
@@ -202,8 +243,56 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) {
         0x9 => {
             add_hl_r16(c, Reg::B, Reg::C);
         }
+        0xA => {
+            ld_a_r16m(c, Reg::B, Reg::C);
+        }
+        0xB => {
+            dec_r16(c, Reg::B, Reg::C);
+        }
+        0xC => {
+            inc_r8(c, Reg::C);
+        }
+        0xD => {
+            dec_r8(c, Reg::C);
+        }
+        0xE => {
+            ld_r8_n8(c, Reg::C);
+        }
+        0xF => {
+            rrca(c);
+        }
+        0x10 => {
+            stop_n8(c);
+        }
+        0x11 => {
+            ld_r16_n16(c, Reg::D, Reg::E);
+        }
+        0x12 => {
+            ld_r16m_a(c, Reg::D, Reg::E);
+        }
+        0x13 => {
+            inc_r16(c, Reg::D, Reg::E);
+        }
+        0x14 => {
+            inc_r8(c, Reg::D);
+        }
+        0x15 => {
+            dec_r8(c, Reg::D);
+        }
+        0x16 => {
+            ld_r8_n8(c, Reg::D);
+        }
         0x17 => {
             rla(c);
+        }
+        0x18 => {
+            jr_e8(c);
+        }
+        0x19 => {
+            add_hl_r16(c, Reg::D, Reg::E);
+        }
+        0x1A => {
+            ld_a_r16m(c, Reg::D, Reg::E);
         }
         _ => eprintln!("OpCode is not implemented: {}", opcode),
     }
