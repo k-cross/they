@@ -20,6 +20,13 @@ fn ld_r8_n8(c: &mut CPU, r: Reg) -> u8 {
     2
 }
 
+fn ld_r16m_n8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = c.get_instr();
+    let addr = (read_reg(c, &r1) as usize) << 8 | read_reg(c, &r2) as usize;
+    c.memory.ram[addr] = v;
+    2
+}
+
 fn ld_r16_n16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let val = c.get_word_instr();
     write_reg(c, &r1, (val >> 8) as u8);
@@ -68,6 +75,26 @@ fn ld_hldm_a(c: &mut CPU) -> u8 {
     2
 }
 
+fn ld_a_hlim(c: &mut CPU) -> u8 {
+    let mut hl = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let v = c.memory.read_byte(hl);
+    hl = hl.wrapping_add(1);
+    c.registers.high = (hl >> 8) as u8;
+    c.registers.low = hl as u8;
+    c.registers.acc = v;
+    2
+}
+
+fn ld_a_hldm(c: &mut CPU) -> u8 {
+    let mut hl = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let v = c.memory.read_byte(hl);
+    hl = hl.wrapping_sub(1);
+    c.registers.high = (hl >> 8) as u8;
+    c.registers.low = hl as u8;
+    c.registers.acc = v;
+    2
+}
+
 fn inc_sp(c: &mut CPU) -> u8 {
     // no flags are set for overflows
     c.registers.sp = c.registers.sp.wrapping_add(1);
@@ -98,6 +125,21 @@ fn inc_r8(c: &mut CPU, r: Reg) -> u8 {
         }
     }
     1
+}
+
+fn dec_r16m(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let addr = (read_reg(c, &r1) as usize) << 8 | read_reg(c, &r2) as usize;
+    let v = c.memory.ram[addr];
+    let vv = v.wrapping_sub(1);
+    c.memory.ram[addr] = vv;
+    if vv & 0b0000_1000 != 0 && v & 0b0001_0000 != 0 && v & 0b0000_1000 == 0 {
+        c.set_flag(ALUFlag::H, true);
+    };
+    if vv == 0 {
+        c.set_flag(ALUFlag::Z, true);
+    }
+    c.set_flag(ALUFlag::N, true);
+    3
 }
 
 fn inc_r16m(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
@@ -250,6 +292,11 @@ fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     2
 }
 
+fn scf(c: &mut CPU) -> u8 {
+    c.set_flag(ALUFlag::C, true);
+    1
+}
+
 fn stop_n8(_c: &mut CPU) -> u8 {
     // mostly used to switch speeds, ignoring for now
     todo!()
@@ -319,6 +366,13 @@ fn daa(c: &mut CPU) -> u8 {
     c.set_flag(ALUFlag::H, false);
     c.set_flag(ALUFlag::Z, acc == 0);
     c.registers.acc = acc;
+    1
+}
+
+fn cpl(c: &mut CPU) -> u8 {
+    c.registers.acc = !c.registers.acc;
+    c.set_flag(ALUFlag::N, true);
+    c.set_flag(ALUFlag::H, true);
     1
 }
 
@@ -396,11 +450,21 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0x27 => daa(c),
         0x28 => jr_z_e8(c),
         0x29 => add_hl_r16(c, Reg::H, Reg::L),
+        0x2A => ld_a_hlim(c),
+        0x2B => dec_r16(c, Reg::H, Reg::L),
+        0x2C => inc_r8(c, Reg::L),
+        0x2D => dec_r8(c, Reg::L),
+        0x2E => ld_r8_n8(c, Reg::L),
+        0x2F => cpl(c),
         0x30 => jr_nc_e8(c),
         0x31 => ld_sp_n16(c),
         0x32 => ld_hldm_a(c),
         0x33 => inc_sp(c),
         0x34 => inc_r16m(c, Reg::H, Reg::L),
+        0x35 => dec_r16m(c, Reg::H, Reg::L),
+        0x36 => ld_r16m_n8(c, Reg::H, Reg::L),
+        0x37 => scf(c),
+        0x3A => ld_a_hldm(c),
         _ => {
             eprintln!("OpCode is not implemented: {}", opcode);
             1

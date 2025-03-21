@@ -291,6 +291,30 @@ fn test_ld_hlim_a() {
 }
 
 #[test]
+fn test_ld_a_hlim() {
+    let mut cpu = setup(0x2A);
+    cpu.memory.ram[0x0100] = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0xFF);
+    assert_eq!(cpu.registers.high, 0x01);
+    assert_eq!(cpu.registers.low, 0x01);
+    assert_eq!(cpu.memory.ram[0x0100], 0xFF);
+}
+
+#[test]
+fn test_ld_a_hldm() {
+    let mut cpu = setup(0x3A);
+    cpu.memory.ram[0x0100] = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0xFF);
+    assert_eq!(cpu.registers.high, 0x00);
+    assert_eq!(cpu.registers.low, 0xFF);
+    assert_eq!(cpu.memory.ram[0x0100], 0xFF);
+}
+
+#[test]
 fn test_ld_hldm_a() {
     let mut cpu = setup(0x32);
     cpu.exec();
@@ -399,4 +423,52 @@ fn test_inc_r16m() {
     assert!(!cpu.check_flag(ALUFlag::H));
     assert!(!cpu.check_flag(ALUFlag::N));
     assert!(!cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_dec_r16m() {
+    let mut cpu = setup(0x35);
+    cpu.registers.high = 0x10;
+    cpu.registers.low = 0x10;
+    cpu.memory.ram[0x1010] = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.high, 0x10);
+    assert_eq!(cpu.registers.low, 0x10);
+    assert_eq!(cpu.memory.ram[0x1010], 0xFE);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_ld_r16m_n8() {
+    let mut cpu = setup(0x36);
+    cpu.registers.high = 0x10;
+    cpu.registers.low = 0x10;
+    cpu.memory.ram[0x1] = 0x66;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.high, 0x10);
+    assert_eq!(cpu.registers.low, 0x10);
+    assert_eq!(cpu.memory.ram[0x1010], 0x66);
+}
+
+#[test]
+fn test_scf() {
+    let mut cpu = setup(0x37);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert!(cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_cpl() {
+    let mut cpu = setup(0x2F);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0xFE);
+    assert!(cpu.check_flag(ALUFlag::H));
+    assert!(cpu.check_flag(ALUFlag::N));
 }
