@@ -13,28 +13,35 @@ enum Reg {
     L,
 }
 
-fn ld_r16_n16(c: &mut CPU, r1: Reg, r2: Reg) {
-    // cycles 3
+// return values of instructions are cycles or ticks
+fn ld_r8_n8(c: &mut CPU, r: Reg) -> u8 {
+    let v = c.get_instr();
+    write_reg(c, &r, v);
+    2
+}
+
+fn ld_r16_n16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let val = c.get_word_instr();
     write_reg(c, &r1, (val >> 8) as u8);
     write_reg(c, &r2, val as u8);
+    3
 }
 
-fn ld_r16m_a(c: &mut CPU, r1: Reg, r2: Reg) {
-    // cycles 2
+fn ld_r16m_a(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let addr = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
     c.memory.write_byte(addr, c.registers.acc);
+    2
 }
 
-fn inc_r16(c: &mut CPU, r1: Reg, r2: Reg) {
-    // cycles 2
+fn inc_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     // no flags are set for overflows
     let val = ((read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16).wrapping_add(1);
     write_reg(c, &r1, (val >> 8) as u8);
     write_reg(c, &r2, val as u8);
+    2
 }
 
-fn inc_r8(c: &mut CPU, r: Reg) {
+fn inc_r8(c: &mut CPU, r: Reg) -> u8 {
     // cycles 1
     let v = read_reg(c, &r);
     match v.checked_add(1) {
@@ -49,6 +56,69 @@ fn inc_r8(c: &mut CPU, r: Reg) {
             c.registers.flags = ALUFlag::C as u8;
         }
     }
+    1
+}
+
+fn dec_r8(c: &mut CPU, r: Reg) -> u8 {
+    let v = read_reg(c, &r);
+    match v.checked_sub(1) {
+        Some(vv) => {
+            write_reg(c, &r, vv);
+            if (0b00001000 & v == 0) && (0b00001000 & vv != 0) {
+                c.registers.flags = ALUFlag::H as u8 | ALUFlag::N as u8;
+            }
+            if vv == 0 {
+                c.registers.flags = c.registers.flags | ALUFlag::Z as u8;
+            }
+        }
+        None => {
+            write_reg(c, &r, 0);
+            c.registers.flags = ALUFlag::C as u8 | ALUFlag::N as u8;
+        }
+    }
+    1
+}
+
+fn rlca(c: &mut CPU) -> u8 {
+    let _ = rlc(c, Reg::A);
+    1
+}
+
+fn rlc(c: &mut CPU, r: Reg) -> u8 {
+    let v = read_reg(c, &r);
+    if 0b1000000 & v == 0 {
+        write_reg(c, &r, v << 1);
+    } else {
+        write_reg(c, &r, v << 1);
+        c.registers.flags = ALUFlag::C as u8;
+    }
+    2
+}
+
+fn rla(c: &mut CPU) -> u8 {
+    let _ = rl(c, Reg::A);
+    1
+}
+
+fn rl(c: &mut CPU, r: Reg) -> u8 {
+    let v = read_reg(c, &r);
+    let carry = c.registers.flags & ALUFlag::C as u8 != 0;
+    if 0b1000000 & v == 0 {
+        if carry {
+            write_reg(c, &r, (v << 1) | 0b1);
+        } else {
+            write_reg(c, &r, v << 1);
+        }
+    } else {
+        if carry {
+            write_reg(c, &r, (v << 1) | 0b1);
+            c.registers.flags = ALUFlag::C as u8;
+        } else {
+            write_reg(c, &r, v << 1);
+            c.registers.flags = ALUFlag::C as u8;
+        }
+    }
+    2
 }
 
 fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
@@ -79,10 +149,7 @@ fn write_reg(c: &mut CPU, r: &Reg, v: u8) {
 
 pub(crate) fn operations(c: &mut CPU, opcode: u8) {
     match opcode {
-        0x0 => {
-            // cycles 1
-            ()
-        }
+        0x0 => (),
         0x1 => {
             ld_r16_n16(c, Reg::B, Reg::C);
         }
@@ -94,6 +161,18 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) {
         }
         0x4 => {
             inc_r8(c, Reg::B);
+        }
+        0x5 => {
+            dec_r8(c, Reg::B);
+        }
+        0x6 => {
+            ld_r8_n8(c, Reg::B);
+        }
+        0x7 => {
+            rlca(c);
+        }
+        0x17 => {
+            rla(c);
         }
         _ => eprintln!("OpCode is not implemented: {}", opcode),
     }
