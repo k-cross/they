@@ -292,3 +292,56 @@ fn test_ld_hldm_a() {
     assert_eq!(cpu.registers.low, 0xFF);
     assert_eq!(cpu.memory.ram[0x0100], 0x1);
 }
+
+#[test]
+fn test_daa() {
+    let mut cpu = setup(0x27);
+
+    // decimal adjustment accumulator with C and H flag set
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.set_flag(ALUFlag::H, true);
+    cpu.registers.acc = 0xFF;
+    cpu.registers.pc = 0;
+    cpu.exec();
+
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, (0xFF - 0x66));
+    assert!(cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::N));
+
+    // decimal adjustment accumulator with N flag set
+    cpu.set_flag(ALUFlag::N, true);
+    cpu.registers.acc = 0xA0;
+    cpu.registers.pc = 0;
+    cpu.exec();
+
+    let mut acc: u8 = 0xA0;
+    acc = acc.wrapping_add(0x60);
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, acc);
+    assert!(cpu.check_flag(ALUFlag::C));
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_set_and_check_alu_flags() {
+    let mut cpu = setup(0x0);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::H));
+
+    cpu.set_flag(ALUFlag::Z, true);
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.set_flag(ALUFlag::N, true);
+    cpu.set_flag(ALUFlag::H, true);
+
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(cpu.check_flag(ALUFlag::C));
+    assert!(cpu.check_flag(ALUFlag::N));
+    assert!(cpu.check_flag(ALUFlag::H));
+}

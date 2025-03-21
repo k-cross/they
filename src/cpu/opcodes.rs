@@ -246,6 +246,46 @@ fn jr_nz_e8(c: &mut CPU) -> u8 {
     }
 }
 
+fn jr_nc_e8(c: &mut CPU) -> u8 {
+    if c.registers.flags & ALUFlag::C as u8 == 0 {
+        let offset = c.get_instr() as i8;
+        c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
+        3
+    } else {
+        c.registers.pc += 1;
+        2
+    }
+}
+
+fn daa(c: &mut CPU) -> u8 {
+    let mut acc = c.registers.acc;
+    let mut adjust = if c.check_flag(ALUFlag::C) { 0x60 } else { 0x00 };
+
+    if c.check_flag(ALUFlag::H) {
+        adjust |= 0x06;
+    };
+
+    if c.check_flag(ALUFlag::N) {
+        if acc & 0x0F > 0x09 {
+            adjust |= 0x06;
+        };
+        if acc > 0x99 {
+            adjust |= 0x60;
+        };
+        acc = acc.wrapping_add(adjust);
+        c.set_flag(ALUFlag::N, false);
+    } else {
+        acc = acc.wrapping_sub(adjust);
+    }
+
+    c.set_flag(ALUFlag::C, adjust >= 0x60);
+    c.set_flag(ALUFlag::H, false);
+    c.set_flag(ALUFlag::Z, acc == 0);
+    c.registers.acc = acc;
+    1
+}
+
+// Helpers
 fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
     match r {
         Reg::A => c.registers.acc,
@@ -275,117 +315,53 @@ fn write_reg(c: &mut CPU, r: &Reg, v: u8) {
 /// Each instruction returns _machine cycles_ (M-cycles) instead of _clock
 /// ticks_ (T-states). To convert M-cycles to T-states:
 ///   t_states = m_cycles * 4
-pub(crate) fn operations(c: &mut CPU, opcode: u8) {
+pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
     match opcode {
-        0x0 => (),
-        0x1 => {
-            ld_r16_n16(c, Reg::B, Reg::C);
+        0x0 => 1,
+        0x1 => ld_r16_n16(c, Reg::B, Reg::C),
+        0x2 => ld_r16m_a(c, Reg::B, Reg::C),
+        0x3 => inc_r16(c, Reg::B, Reg::C),
+        0x4 => inc_r8(c, Reg::B),
+        0x5 => dec_r8(c, Reg::B),
+        0x6 => ld_r8_n8(c, Reg::B),
+        0x7 => rlca(c),
+        0x8 => ld_a16m_sp(c),
+        0x9 => add_hl_r16(c, Reg::B, Reg::C),
+        0xA => ld_a_r16m(c, Reg::B, Reg::C),
+        0xB => dec_r16(c, Reg::B, Reg::C),
+        0xC => inc_r8(c, Reg::C),
+        0xD => dec_r8(c, Reg::C),
+        0xE => ld_r8_n8(c, Reg::C),
+        0xF => rrca(c),
+        0x10 => stop_n8(c),
+        0x11 => ld_r16_n16(c, Reg::D, Reg::E),
+        0x12 => ld_r16m_a(c, Reg::D, Reg::E),
+        0x13 => inc_r16(c, Reg::D, Reg::E),
+        0x14 => inc_r8(c, Reg::D),
+        0x15 => dec_r8(c, Reg::D),
+        0x16 => ld_r8_n8(c, Reg::D),
+        0x17 => rla(c),
+        0x18 => jr_e8(c),
+        0x19 => add_hl_r16(c, Reg::D, Reg::E),
+        0x1A => ld_a_r16m(c, Reg::D, Reg::E),
+        0x1B => dec_r16(c, Reg::D, Reg::E),
+        0x1C => inc_r8(c, Reg::E),
+        0x1D => dec_r8(c, Reg::E),
+        0x1E => ld_r8_n8(c, Reg::E),
+        0x1F => rra(c),
+        0x20 => jr_nz_e8(c),
+        0x21 => ld_r16_n16(c, Reg::H, Reg::L),
+        0x22 => ld_hlim_a(c),
+        0x23 => inc_r16(c, Reg::H, Reg::L),
+        0x24 => inc_r8(c, Reg::H),
+        0x25 => dec_r8(c, Reg::H),
+        0x26 => ld_r8_n8(c, Reg::H),
+        0x27 => daa(c),
+        0x30 => jr_nc_e8(c),
+        0x32 => ld_hldm_a(c),
+        _ => {
+            eprintln!("OpCode is not implemented: {}", opcode);
+            1
         }
-        0x2 => {
-            ld_r16m_a(c, Reg::B, Reg::C);
-        }
-        0x3 => {
-            inc_r16(c, Reg::B, Reg::C);
-        }
-        0x4 => {
-            inc_r8(c, Reg::B);
-        }
-        0x5 => {
-            dec_r8(c, Reg::B);
-        }
-        0x6 => {
-            ld_r8_n8(c, Reg::B);
-        }
-        0x7 => {
-            rlca(c);
-        }
-        0x8 => {
-            ld_a16m_sp(c);
-        }
-        0x9 => {
-            add_hl_r16(c, Reg::B, Reg::C);
-        }
-        0xA => {
-            ld_a_r16m(c, Reg::B, Reg::C);
-        }
-        0xB => {
-            dec_r16(c, Reg::B, Reg::C);
-        }
-        0xC => {
-            inc_r8(c, Reg::C);
-        }
-        0xD => {
-            dec_r8(c, Reg::C);
-        }
-        0xE => {
-            ld_r8_n8(c, Reg::C);
-        }
-        0xF => {
-            rrca(c);
-        }
-        0x10 => {
-            stop_n8(c);
-        }
-        0x11 => {
-            ld_r16_n16(c, Reg::D, Reg::E);
-        }
-        0x12 => {
-            ld_r16m_a(c, Reg::D, Reg::E);
-        }
-        0x13 => {
-            inc_r16(c, Reg::D, Reg::E);
-        }
-        0x14 => {
-            inc_r8(c, Reg::D);
-        }
-        0x15 => {
-            dec_r8(c, Reg::D);
-        }
-        0x16 => {
-            ld_r8_n8(c, Reg::D);
-        }
-        0x17 => {
-            rla(c);
-        }
-        0x18 => {
-            jr_e8(c);
-        }
-        0x19 => {
-            add_hl_r16(c, Reg::D, Reg::E);
-        }
-        0x1A => {
-            ld_a_r16m(c, Reg::D, Reg::E);
-        }
-        0x1B => {
-            dec_r16(c, Reg::D, Reg::E);
-        }
-        0x1C => {
-            inc_r8(c, Reg::E);
-        }
-        0x1D => {
-            dec_r8(c, Reg::E);
-        }
-        0x1E => {
-            ld_r8_n8(c, Reg::E);
-        }
-        0x1F => {
-            rra(c);
-        }
-        0x20 => {
-            jr_nz_e8(c);
-        }
-        0x21 => {
-            ld_r16_n16(c, Reg::H, Reg::L);
-        }
-        0x22 => {
-            ld_hlim_a(c);
-        }
-        0x23 => {
-            inc_r16(c, Reg::H, Reg::L);
-        }
-        0x32 => {
-            ld_hldm_a(c);
-        }
-        _ => eprintln!("OpCode is not implemented: {}", opcode),
     }
 }

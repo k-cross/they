@@ -114,8 +114,21 @@ impl CPU {
         }
     }
 
-    /// Tick performs 1 cpu operation per cycle given the internal state of the
-    /// CPU.
+    /// Set or unset a specifc flag in the `flags` register.
+    pub fn set_flag(&mut self, flag: ALUFlag, cond: bool) {
+        if cond {
+            self.registers.flags = self.registers.flags | flag as u8;
+        } else {
+            self.registers.flags = self.registers.flags & !(flag as u8);
+        }
+    }
+
+    /// Check for a specifc flag in the `flags` register.
+    pub fn check_flag(&mut self, flag: ALUFlag) -> bool {
+        self.registers.flags & (flag as u8) != 0
+    }
+
+    /// One cycle is the same as four ticks.
     pub fn tick() {
         todo!();
     }
@@ -138,6 +151,7 @@ impl CPU {
     /// - Immediate Values: accessed via memory using current PC value
     pub fn exec(&mut self) {
         let opcode = self.get_instr();
-        operations(self, opcode);
+        // TODO: implement system ticks and cycles
+        let _m_cycles = operations(self, opcode);
     }
 }
