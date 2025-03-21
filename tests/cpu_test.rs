@@ -62,6 +62,14 @@ fn test_ld_r16m_a() {
 }
 
 #[test]
+fn test_inc_sp() {
+    let mut cpu = setup(0x33);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.sp, 0x1);
+}
+
+#[test]
 fn test_inc_r16() {
     // specific opcode for registers (b, c)
     let mut cpu = setup(0x3);
@@ -344,4 +352,51 @@ fn test_set_and_check_alu_flags() {
     assert!(cpu.check_flag(ALUFlag::C));
     assert!(cpu.check_flag(ALUFlag::N));
     assert!(cpu.check_flag(ALUFlag::H));
+}
+
+#[test]
+fn test_jr_z_e8() {
+    let i: i8 = -5;
+    // specific opcode for register a
+    let mut cpu = setup(0x28);
+    cpu.memory.ram[7] = 0x28;
+    cpu.registers.pc = 7;
+    cpu.memory.ram[8] = i as u8;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x9);
+
+    cpu.memory.ram[7] = 0x28;
+    cpu.registers.pc = 7;
+    cpu.registers.flags = ALUFlag::Z as u8;
+    cpu.memory.ram[8] = i as u8;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x4);
+}
+
+#[test]
+fn test_ld_sp_n16() {
+    // opcode where r16 is registers(b,c)
+    let mut cpu = setup(0x31);
+    cpu.memory.ram[0x1] = 0xFF;
+    cpu.memory.ram[0x2] = 0xEE;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x3);
+    assert_eq!(cpu.registers.sp, 0xFFEE);
+}
+
+#[test]
+fn test_inc_r16m() {
+    let mut cpu = setup(0x34);
+    cpu.registers.high = 0x10;
+    cpu.registers.low = 0x10;
+    cpu.memory.ram[0x1010] = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.high, 0x10);
+    assert_eq!(cpu.registers.low, 0x10);
+    assert_eq!(cpu.memory.ram[0x1010], 0);
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
 }

@@ -27,6 +27,11 @@ fn ld_r16_n16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     3
 }
 
+fn ld_sp_n16(c: &mut CPU) -> u8 {
+    c.registers.sp = c.get_word_instr();
+    3
+}
+
 fn ld_r16m_a(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let addr = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
     c.memory.write_byte(addr, c.registers.acc);
@@ -63,6 +68,12 @@ fn ld_hldm_a(c: &mut CPU) -> u8 {
     2
 }
 
+fn inc_sp(c: &mut CPU) -> u8 {
+    // no flags are set for overflows
+    c.registers.sp = c.registers.sp.wrapping_add(1);
+    2
+}
+
 fn inc_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     // no flags are set for overflows
     let val = ((read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16).wrapping_add(1);
@@ -87,6 +98,21 @@ fn inc_r8(c: &mut CPU, r: Reg) -> u8 {
         }
     }
     1
+}
+
+fn inc_r16m(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let addr = (read_reg(c, &r1) as usize) << 8 | read_reg(c, &r2) as usize;
+    let v = c.memory.ram[addr];
+    let vv = v.wrapping_add(1);
+    c.memory.ram[addr] = vv;
+    if vv & 0b0001_0000 != 0 && v & 0b0001_0000 == 0 {
+        c.set_flag(ALUFlag::H, true);
+    }
+    if vv == 0 {
+        c.set_flag(ALUFlag::Z, true);
+    }
+    c.set_flag(ALUFlag::N, false);
+    3
 }
 
 fn dec_r8(c: &mut CPU, r: Reg) -> u8 {
@@ -246,6 +272,17 @@ fn jr_nz_e8(c: &mut CPU) -> u8 {
     }
 }
 
+fn jr_z_e8(c: &mut CPU) -> u8 {
+    if c.check_flag(ALUFlag::Z) {
+        let offset = c.get_instr() as i8;
+        c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
+        3
+    } else {
+        c.registers.pc += 1;
+        2
+    }
+}
+
 fn jr_nc_e8(c: &mut CPU) -> u8 {
     if c.registers.flags & ALUFlag::C as u8 == 0 {
         let offset = c.get_instr() as i8;
@@ -357,8 +394,13 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0x25 => dec_r8(c, Reg::H),
         0x26 => ld_r8_n8(c, Reg::H),
         0x27 => daa(c),
+        0x28 => jr_z_e8(c),
+        0x29 => add_hl_r16(c, Reg::H, Reg::L),
         0x30 => jr_nc_e8(c),
+        0x31 => ld_sp_n16(c),
         0x32 => ld_hldm_a(c),
+        0x33 => inc_sp(c),
+        0x34 => inc_r16m(c, Reg::H, Reg::L),
         _ => {
             eprintln!("OpCode is not implemented: {}", opcode);
             1
