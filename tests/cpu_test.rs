@@ -226,11 +226,69 @@ fn test_rrca() {
 #[test]
 fn test_jr_e8() {
     let i: i8 = -5;
-    // specific opcode for register a
     let mut cpu = setup(0x18);
     cpu.memory.ram[7] = 0x18;
     cpu.registers.pc = 7;
     cpu.memory.ram[8] = i as u8;
     cpu.exec();
     assert_eq!(cpu.registers.pc, 0x4);
+}
+
+#[test]
+fn test_rra() {
+    // specific opcode for register a
+    let mut cpu = setup(0x1F);
+    cpu.registers.acc = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0b01111111);
+    assert_eq!(cpu.registers.flags, ALUFlag::C as u8);
+
+    // with carry pre-set to rotate in
+    cpu.registers.acc = 0b1111_1110;
+    cpu.registers.pc = 0;
+    cpu.exec();
+    assert_eq!(cpu.registers.acc, 0xFF);
+    assert_eq!(cpu.registers.flags, 0);
+}
+
+#[test]
+fn test_jr_nz_e8() {
+    let i: i8 = -5;
+    // specific opcode for register a
+    let mut cpu = setup(0x20);
+    cpu.memory.ram[7] = 0x20;
+    cpu.registers.pc = 7;
+    cpu.memory.ram[8] = i as u8;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x4);
+
+    cpu.memory.ram[7] = 0x20;
+    cpu.registers.pc = 7;
+    cpu.registers.flags = ALUFlag::Z as u8;
+    cpu.memory.ram[8] = i as u8;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x9);
+}
+
+#[test]
+fn test_ld_hlim_a() {
+    let mut cpu = setup(0x22);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0x1);
+    assert_eq!(cpu.registers.high, 0x01);
+    assert_eq!(cpu.registers.low, 0x01);
+    assert_eq!(cpu.memory.ram[0x0100], 0x1);
+}
+
+#[test]
+fn test_ld_hldm_a() {
+    let mut cpu = setup(0x32);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0x1);
+    assert_eq!(cpu.registers.high, 0x00);
+    assert_eq!(cpu.registers.low, 0xFF);
+    assert_eq!(cpu.memory.ram[0x0100], 0x1);
 }
