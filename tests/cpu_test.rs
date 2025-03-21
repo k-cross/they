@@ -143,3 +143,41 @@ fn test_rla() {
     assert_eq!(cpu.registers.acc, 0b11111110);
     assert_eq!(cpu.registers.flags, ALUFlag::C as u8);
 }
+
+#[test]
+fn test_ld_a16m_sp() {
+    // specific opcode for register sp
+    let mut cpu = setup(0x8);
+    cpu.registers.sp = 0xAAFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x3);
+    assert_eq!(cpu.registers.sp, 0xAAFF);
+    assert_eq!(cpu.memory.ram[0x0], 0xAA);
+    assert_eq!(cpu.memory.ram[0x1], 0xFF);
+}
+
+#[test]
+fn test_add_hl_r16() {
+    // specific opcode for registers b,c
+    let mut cpu = setup(0x9);
+    cpu.registers.high = 0xFF;
+    cpu.registers.b = 0x0;
+    cpu.registers.c = 0x1;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.high, 0xFF);
+    assert_eq!(cpu.registers.low, 0x01);
+    assert_eq!(cpu.registers.flags, 0x0);
+
+    // with overflow
+    cpu.registers.pc = 0;
+    cpu.registers.high = 0xFF;
+    cpu.registers.low = 0xFF;
+    cpu.registers.b = 0x0;
+    cpu.registers.c = 0x1;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.high, 0x0);
+    assert_eq!(cpu.registers.low, 0x0);
+    assert_eq!(cpu.registers.flags, ALUFlag::C as u8);
+}

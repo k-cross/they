@@ -32,6 +32,11 @@ fn ld_r16m_a(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     c.memory.write_byte(addr, c.registers.acc);
     2
 }
+fn ld_a16m_sp(c: &mut CPU) -> u8 {
+    let addr = c.get_word_instr();
+    c.memory.write_word(addr, c.registers.sp);
+    3
+}
 
 fn inc_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     // no flags are set for overflows
@@ -121,6 +126,26 @@ fn rl(c: &mut CPU, r: Reg) -> u8 {
     2
 }
 
+fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let hl = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    match v.checked_add(hl) {
+        Some(vv) => {
+            if (0b00001000_00000000 & hl == 0) && (0b00001000_00000000 & vv != 0) {
+                c.registers.flags = ALUFlag::H as u8;
+            }
+            c.registers.high = (vv >> 8) as u8;
+            c.registers.low = vv as u8;
+        }
+        None => {
+            c.registers.high = 0;
+            c.registers.low = 0;
+            c.registers.flags = ALUFlag::C as u8;
+        }
+    }
+    2
+}
+
 fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
     match r {
         Reg::A => c.registers.acc,
@@ -170,6 +195,12 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) {
         }
         0x7 => {
             rlca(c);
+        }
+        0x8 => {
+            ld_a16m_sp(c);
+        }
+        0x9 => {
+            add_hl_r16(c, Reg::B, Reg::C);
         }
         0x17 => {
             rla(c);
