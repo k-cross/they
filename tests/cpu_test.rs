@@ -604,3 +604,48 @@ fn test_sub_r8_r16m() {
     assert!(!cpu.check_flag(ALUFlag::H));
     assert!(cpu.check_flag(ALUFlag::N));
 }
+
+#[test]
+fn test_sbc_r8_r8() {
+    // specific opcode for registers a, b
+    let mut cpu = setup(0x98);
+    cpu.registers.acc = 0xFF;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0xFC);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_sbc_r8_r16m() {
+    let mut cpu = setup(0x9E);
+    cpu.registers.acc = 0xFF;
+    cpu.memory.ram[0x0100] = 0xFE;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0x0);
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_and_r8_r8() {
+    // specific opcode for registers a, b
+    let mut cpu = setup(0xA0);
+    cpu.registers.acc = 0xFF;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
