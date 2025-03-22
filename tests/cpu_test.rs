@@ -637,7 +637,6 @@ fn test_sbc_r8_r16m() {
 
 #[test]
 fn test_and_r8_r8() {
-    // specific opcode for registers a, b
     let mut cpu = setup(0xA0);
     cpu.registers.acc = 0xFF;
     cpu.set_flag(ALUFlag::C, true);
@@ -647,5 +646,47 @@ fn test_and_r8_r8() {
     assert!(!cpu.check_flag(ALUFlag::Z));
     assert!(!cpu.check_flag(ALUFlag::C));
     assert!(cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_and_r8_r16m() {
+    let mut cpu = setup(0xA6);
+    cpu.registers.acc = 0xFF;
+    cpu.memory.ram[0x0100] = 0xFE;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0xFE);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_xor_r8_r8() {
+    let mut cpu = setup(0xA8);
+    cpu.registers.acc = 0xFF;
+    cpu.registers.b = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0);
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_xor_r8_r16m() {
+    let mut cpu = setup(0xAE);
+    cpu.registers.acc = 0xFF;
+    cpu.memory.ram[0x0100] = 0xFE;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x1);
+    assert_eq!(cpu.registers.acc, 0x1);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
     assert!(!cpu.check_flag(ALUFlag::N));
 }
