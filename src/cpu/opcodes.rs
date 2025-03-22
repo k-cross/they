@@ -578,6 +578,73 @@ fn xor_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
     1
 }
 
+fn or_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = read_reg(c, &r1);
+    let v2 = read_reg(c, &r2);
+    let res = v | v2;
+    write_reg(c, &r1, res);
+    c.set_flag(ALUFlag::Z, res == 0);
+    c.set_flag(ALUFlag::H, false);
+    c.set_flag(ALUFlag::C, false);
+    c.set_flag(ALUFlag::N, false);
+    1
+}
+
+fn or_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
+    let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
+    let v = read_reg(c, &r1);
+    let v2 = c.memory.read_byte(addr);
+    let res = v | v2;
+    write_reg(c, &r1, res);
+    c.set_flag(ALUFlag::Z, res == 0);
+    c.set_flag(ALUFlag::H, false);
+    c.set_flag(ALUFlag::C, false);
+    c.set_flag(ALUFlag::N, false);
+    1
+}
+
+fn cp_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = read_reg(c, &r1);
+    let v2 = read_reg(c, &r2);
+    match v.checked_sub(v2) {
+        Some(vv) => {
+            c.set_flag(
+                ALUFlag::H,
+                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
+            );
+            c.set_flag(ALUFlag::Z, vv == 0);
+        }
+        None => {
+            c.set_flag(ALUFlag::C, true);
+            c.set_flag(ALUFlag::Z, true);
+        }
+    }
+    c.set_flag(ALUFlag::N, true);
+    1
+}
+
+fn cp_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
+    let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
+    let v = read_reg(c, &r1);
+    let v2 = c.memory.read_byte(addr);
+    match v.checked_sub(v2) {
+        Some(vv) => {
+            c.set_flag(
+                ALUFlag::H,
+                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
+            );
+            c.set_flag(ALUFlag::Z, vv == 0);
+            c.set_flag(ALUFlag::C, false);
+        }
+        None => {
+            c.set_flag(ALUFlag::C, true);
+            c.set_flag(ALUFlag::Z, true);
+        }
+    }
+    c.set_flag(ALUFlag::N, true);
+    2
+}
+
 fn scf(c: &mut CPU) -> u8 {
     c.set_flag(ALUFlag::C, true);
     1
@@ -896,6 +963,22 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0xAD => xor_r8_r8(c, Reg::A, Reg::L),
         0xAE => xor_r8_r16m(c, Reg::A, Reg::H, Reg::L),
         0xAF => xor_r8_r8(c, Reg::A, Reg::A),
+        0xB0 => or_r8_r8(c, Reg::A, Reg::B),
+        0xB1 => or_r8_r8(c, Reg::A, Reg::C),
+        0xB2 => or_r8_r8(c, Reg::A, Reg::D),
+        0xB3 => or_r8_r8(c, Reg::A, Reg::E),
+        0xB4 => or_r8_r8(c, Reg::A, Reg::H),
+        0xB5 => or_r8_r8(c, Reg::A, Reg::L),
+        0xB6 => or_r8_r16m(c, Reg::A, Reg::H, Reg::L),
+        0xB7 => or_r8_r8(c, Reg::A, Reg::A),
+        0xB8 => cp_r8_r8(c, Reg::A, Reg::B),
+        0xB9 => cp_r8_r8(c, Reg::A, Reg::C),
+        0xBA => cp_r8_r8(c, Reg::A, Reg::D),
+        0xBB => cp_r8_r8(c, Reg::A, Reg::E),
+        0xBC => cp_r8_r8(c, Reg::A, Reg::H),
+        0xBD => cp_r8_r8(c, Reg::A, Reg::L),
+        0xBE => cp_r8_r16m(c, Reg::A, Reg::H, Reg::L),
+        0xBF => cp_r8_r8(c, Reg::A, Reg::A),
         _ => {
             eprintln!("OpCode is not implemented: {}", opcode);
             1
