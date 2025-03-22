@@ -103,6 +103,11 @@ pub enum Interrupt {
 pub struct CPU {
     pub registers: Registers,
     pub memory: Memory,
+    pub ime: bool,
+    pub di: bool,
+    pub ei: bool,
+    pub halt: bool,
+    pub stop: bool,
 }
 
 impl CPU {
@@ -111,6 +116,11 @@ impl CPU {
         CPU {
             registers: Registers::new(),
             memory: Memory::new(),
+            ime: true,
+            di: true,
+            ei: true,
+            halt: false,
+            stop: false,
         }
     }
 

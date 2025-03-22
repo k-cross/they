@@ -317,6 +317,75 @@ fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     2
 }
 
+fn adc_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = read_reg(c, &r1);
+    let v2 = read_reg(c, &r2);
+    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    match v.checked_add(v2 + carry) {
+        Some(vv) => {
+            c.set_flag(
+                ALUFlag::H,
+                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
+            );
+            c.set_flag(ALUFlag::Z, vv == 0);
+            c.set_flag(ALUFlag::C, false);
+            write_reg(c, &r1, vv);
+        }
+        None => {
+            write_reg(c, &r1, 0);
+            c.set_flag(ALUFlag::C, true);
+            c.set_flag(ALUFlag::Z, true);
+        }
+    }
+    c.set_flag(ALUFlag::N, false);
+    1
+}
+
+fn add_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = read_reg(c, &r1);
+    let v2 = read_reg(c, &r2);
+    match v.checked_add(v2) {
+        Some(vv) => {
+            c.set_flag(
+                ALUFlag::H,
+                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
+            );
+            c.set_flag(ALUFlag::Z, vv == 0);
+            write_reg(c, &r1, vv);
+        }
+        None => {
+            write_reg(c, &r1, 0);
+            c.set_flag(ALUFlag::C, true);
+            c.set_flag(ALUFlag::Z, true);
+        }
+    }
+    c.set_flag(ALUFlag::N, false);
+    1
+}
+
+fn add_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
+    let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
+    let v = read_reg(c, &r1);
+    let v2 = c.memory.read_byte(addr);
+    match v.checked_add(v2) {
+        Some(vv) => {
+            c.set_flag(
+                ALUFlag::H,
+                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
+            );
+            c.set_flag(ALUFlag::Z, vv == 0);
+            write_reg(c, &r1, vv);
+        }
+        None => {
+            write_reg(c, &r1, 0);
+            c.set_flag(ALUFlag::C, true);
+            c.set_flag(ALUFlag::Z, true);
+        }
+    }
+    c.set_flag(ALUFlag::N, false);
+    2
+}
+
 fn add_r16_sp(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let sp = c.registers.sp;
     let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
@@ -441,6 +510,11 @@ fn ccf(c: &mut CPU) -> u8 {
     } else {
         c.set_flag(ALUFlag::C, true);
     }
+    1
+}
+
+fn halt(c: &mut CPU) -> u8 {
+    c.halt = true;
     1
 }
 
@@ -594,6 +668,30 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0x73 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::E),
         0x74 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::H),
         0x75 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::L),
+        0x76 => halt(c),
+        0x77 => ld_r16m_r8(c, Reg::H, Reg::L, Reg::A),
+        0x78 => ld_r8_r8(c, Reg::A, Reg::B),
+        0x79 => ld_r8_r8(c, Reg::A, Reg::C),
+        0x7A => ld_r8_r8(c, Reg::A, Reg::D),
+        0x7B => ld_r8_r8(c, Reg::A, Reg::E),
+        0x7C => ld_r8_r8(c, Reg::A, Reg::H),
+        0x7D => ld_r8_r8(c, Reg::A, Reg::L),
+        0x7E => ld_r8_r16m(c, Reg::A, Reg::H, Reg::L),
+        0x7F => ld_r8_r8(c, Reg::A, Reg::A),
+        0x80 => add_r8_r8(c, Reg::A, Reg::B),
+        0x81 => add_r8_r8(c, Reg::A, Reg::C),
+        0x82 => add_r8_r8(c, Reg::A, Reg::D),
+        0x83 => add_r8_r8(c, Reg::A, Reg::E),
+        0x84 => add_r8_r8(c, Reg::A, Reg::H),
+        0x85 => add_r8_r8(c, Reg::A, Reg::L),
+        0x86 => add_r8_r16m(c, Reg::A, Reg::H, Reg::L),
+        0x87 => add_r8_r8(c, Reg::A, Reg::A),
+        0x88 => adc_r8_r8(c, Reg::A, Reg::B),
+        0x89 => adc_r8_r8(c, Reg::A, Reg::C),
+        0x8A => adc_r8_r8(c, Reg::A, Reg::D),
+        0x8B => adc_r8_r8(c, Reg::A, Reg::E),
+        0x8C => adc_r8_r8(c, Reg::A, Reg::H),
+        0x8D => adc_r8_r8(c, Reg::A, Reg::L),
         _ => {
             eprintln!("OpCode is not implemented: {}", opcode);
             1
