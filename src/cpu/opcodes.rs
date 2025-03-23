@@ -755,6 +755,32 @@ fn halt(c: &mut CPU) -> u8 {
     1
 }
 
+fn ret(c: &mut CPU) -> u8 {
+    let v = c.memory.read_word(c.registers.sp);
+    c.registers.pc = v;
+    c.registers.sp += 2;
+    4
+}
+
+fn ret_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
+    if c.check_flag(flag) == set {
+        let v = c.memory.read_word(c.registers.sp);
+        c.registers.pc = v;
+        c.registers.sp += 2;
+        5
+    } else {
+        2
+    }
+}
+
+fn pop_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let v = c.memory.read_word(c.registers.sp);
+    write_reg(c, &r1, (v >> 8) as u8);
+    write_reg(c, &r2, v as u8);
+    c.registers.sp += 2;
+    3
+}
+
 // Helpers
 fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
     match r {
@@ -979,6 +1005,15 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0xBD => cp_r8_r8(c, Reg::A, Reg::L),
         0xBE => cp_r8_r16m(c, Reg::A, Reg::H, Reg::L),
         0xBF => cp_r8_r8(c, Reg::A, Reg::A),
+        0xC0 => ret_cc(c, ALUFlag::Z, false),
+        0xC1 => pop_r16(c, Reg::B, Reg::C),
+        0xC8 => ret_cc(c, ALUFlag::Z, true),
+        0xC9 => ret(c),
+        0xD0 => ret_cc(c, ALUFlag::C, false),
+        0xD1 => pop_r16(c, Reg::D, Reg::E),
+        0xD8 => ret_cc(c, ALUFlag::C, true),
+        0xE1 => pop_r16(c, Reg::H, Reg::L),
+        0xF1 => pop_r16(c, Reg::A, Reg::FLAGS),
         _ => {
             eprintln!("OpCode is not implemented: {}", opcode);
             1

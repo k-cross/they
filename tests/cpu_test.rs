@@ -743,3 +743,24 @@ fn test_cp_r8_r16m() {
     assert!(!cpu.check_flag(ALUFlag::H));
     assert!(cpu.check_flag(ALUFlag::N));
 }
+
+#[test]
+fn test_ret_cc() {
+    let mut cpu = setup(0xC0);
+    cpu.registers.sp = 0x0100;
+    cpu.memory.ram[0x0100] = 0xA;
+    cpu.exec();
+    assert_eq!(cpu.registers.sp, 0x102);
+    assert_eq!(cpu.registers.pc, 0xA00);
+}
+
+#[test]
+fn test_pop_r16() {
+    let mut cpu = setup(0xC1);
+    cpu.registers.sp = 0x0100;
+    cpu.memory.ram[0x0100] = 0xA;
+    cpu.exec();
+    assert_eq!(cpu.registers.sp, 0x102);
+    assert_eq!(cpu.registers.b, 0xA);
+    assert_eq!(cpu.registers.c, 0x0);
+}
