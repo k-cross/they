@@ -341,6 +341,30 @@ fn adc_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     1
 }
 
+fn adc_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
+    let v = read_reg(c, &r1);
+    let v2 = c.get_instr();
+    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    match v.checked_add(v2 + carry) {
+        Some(vv) => {
+            c.set_flag(
+                ALUFlag::H,
+                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
+            );
+            c.set_flag(ALUFlag::Z, vv == 0);
+            c.set_flag(ALUFlag::C, false);
+            write_reg(c, &r1, vv);
+        }
+        None => {
+            write_reg(c, &r1, 0);
+            c.set_flag(ALUFlag::C, true);
+            c.set_flag(ALUFlag::Z, true);
+        }
+    }
+    c.set_flag(ALUFlag::N, false);
+    2
+}
+
 fn add_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = read_reg(c, &r2);
@@ -773,12 +797,52 @@ fn ret_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
     }
 }
 
+fn jp_a16(c: &mut CPU) -> u8 {
+    c.registers.pc = c.get_word_instr();
+    3
+}
+
+fn jp_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
+    if c.check_flag(flag) == set {
+        c.registers.pc = c.get_word_instr();
+        4
+    } else {
+        c.registers.pc += 2;
+        3
+    }
+}
+
+fn call_a16(c: &mut CPU) -> u8 {
+    c.registers.sp -= 2;
+    c.memory.write_word(c.registers.sp, c.registers.pc + 2);
+    c.registers.pc = c.get_word_instr();
+    6
+}
+
+fn call_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
+    if c.check_flag(flag) == set {
+        c.registers.sp -= 2;
+        c.memory.write_word(c.registers.sp, c.registers.pc + 2);
+        c.registers.pc = c.get_word_instr();
+        6
+    } else {
+        3
+    }
+}
+
 fn pop_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = c.memory.read_word(c.registers.sp);
     write_reg(c, &r1, (v >> 8) as u8);
     write_reg(c, &r2, v as u8);
     c.registers.sp += 2;
     3
+}
+
+fn push_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    c.registers.sp -= 2;
+    let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    c.memory.write_word(c.registers.sp, v);
+    4
 }
 
 // Helpers
@@ -1007,11 +1071,22 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0xBF => cp_r8_r8(c, Reg::A, Reg::A),
         0xC0 => ret_cc(c, ALUFlag::Z, false),
         0xC1 => pop_r16(c, Reg::B, Reg::C),
+        0xC2 => jp_a16_cc(c, ALUFlag::Z, false),
+        0xC3 => jp_a16(c),
+        0xC4 => call_a16_cc(c, ALUFlag::Z, false),
+        0xC5 => push_r16(c, Reg::B, Reg::C),
         0xC8 => ret_cc(c, ALUFlag::Z, true),
         0xC9 => ret(c),
+        0xCA => jp_a16_cc(c, ALUFlag::Z, true),
+        0xCD => call_a16(c),
+        0xCE => adc_r8_n8(c, Reg::A),
         0xD0 => ret_cc(c, ALUFlag::C, false),
         0xD1 => pop_r16(c, Reg::D, Reg::E),
+        0xD2 => jp_a16_cc(c, ALUFlag::C, false),
+        // no D3
+        0xD4 => call_a16_cc(c, ALUFlag::C, false),
         0xD8 => ret_cc(c, ALUFlag::C, true),
+        0xDA => jp_a16_cc(c, ALUFlag::C, true),
         0xE1 => pop_r16(c, Reg::H, Reg::L),
         0xF1 => pop_r16(c, Reg::A, Reg::FLAGS),
         _ => {

@@ -61,11 +61,11 @@ impl fmt::Display for Registers {
             "acc:{:2x} flags:{:2x} b:{:2x} c:{:2x} d:{:2x} e:{:2x} \
                 high:{:2x} low:{:2x} pc:{:4x} sp:{:4x}",
             self.acc,
+            self.flags,
             self.b,
             self.c,
             self.d,
             self.e,
-            self.flags,
             self.high,
             self.low,
             self.pc,
