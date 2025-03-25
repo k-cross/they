@@ -219,6 +219,32 @@ fn bit_hlm(c: &mut CPU, mask: u8) -> u8 {
     c.set_flag(ALUFlag::Z, z);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::H, true);
+    3
+}
+
+fn res_r8(c: &mut CPU, mask: u8, r: Reg) -> u8 {
+    let v = read_reg(c, &r) & !mask;
+    write_reg(c, &r, v);
+    2
+}
+
+fn res_hlm(c: &mut CPU, mask: u8) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let v = c.memory.read_byte(addr) & !mask;
+    c.memory.write_byte(addr, v);
+    4
+}
+
+fn set_r8(c: &mut CPU, mask: u8, r: Reg) -> u8 {
+    let v = read_reg(c, &r) | mask;
+    write_reg(c, &r, v);
+    2
+}
+
+fn set_hlm(c: &mut CPU, mask: u8) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let v = c.memory.read_byte(addr) | mask;
+    c.memory.write_byte(addr, v);
     4
 }
 
@@ -352,9 +378,134 @@ pub(crate) fn operation(c: &mut CPU, opcode: u8) -> u8 {
         0x7D => bit_r8(c, 0b1000_0000, Reg::L),
         0x7E => bit_hlm(c, 0b1000_0000),
         0x7F => bit_r8(c, 0b1000_0000, Reg::A),
-        _ => {
-            eprintln!("Prefix Opcode is not implemented: {}", opcode);
-            1
-        }
+        0x80 => res_r8(c, 0b0000_0001, Reg::B),
+        0x81 => res_r8(c, 0b0000_0001, Reg::C),
+        0x82 => res_r8(c, 0b0000_0001, Reg::D),
+        0x83 => res_r8(c, 0b0000_0001, Reg::E),
+        0x84 => res_r8(c, 0b0000_0001, Reg::H),
+        0x85 => res_r8(c, 0b0000_0001, Reg::L),
+        0x86 => res_hlm(c, 0b0000_0001),
+        0x87 => res_r8(c, 0b0000_0001, Reg::A),
+        0x88 => res_r8(c, 0b0000_0010, Reg::B),
+        0x89 => res_r8(c, 0b0000_0010, Reg::C),
+        0x8A => res_r8(c, 0b0000_0010, Reg::D),
+        0x8B => res_r8(c, 0b0000_0010, Reg::E),
+        0x8C => res_r8(c, 0b0000_0010, Reg::H),
+        0x8D => res_r8(c, 0b0000_0010, Reg::L),
+        0x8E => res_hlm(c, 0b0000_0010),
+        0x8F => res_r8(c, 0b0000_0010, Reg::A),
+        0x90 => res_r8(c, 0b0000_0100, Reg::B),
+        0x91 => res_r8(c, 0b0000_0100, Reg::C),
+        0x92 => res_r8(c, 0b0000_0100, Reg::D),
+        0x93 => res_r8(c, 0b0000_0100, Reg::E),
+        0x94 => res_r8(c, 0b0000_0100, Reg::H),
+        0x95 => res_r8(c, 0b0000_0100, Reg::L),
+        0x96 => res_hlm(c, 0b0000_0100),
+        0x97 => res_r8(c, 0b0000_0100, Reg::A),
+        0x98 => res_r8(c, 0b0000_1000, Reg::B),
+        0x99 => res_r8(c, 0b0000_1000, Reg::C),
+        0x9A => res_r8(c, 0b0000_1000, Reg::D),
+        0x9B => res_r8(c, 0b0000_1000, Reg::E),
+        0x9C => res_r8(c, 0b0000_1000, Reg::H),
+        0x9D => res_r8(c, 0b0000_1000, Reg::L),
+        0x9E => res_hlm(c, 0b0000_1000),
+        0x9F => res_r8(c, 0b0000_1000, Reg::A),
+        0xA0 => res_r8(c, 0b0001_0000, Reg::B),
+        0xA1 => res_r8(c, 0b0001_0000, Reg::C),
+        0xA2 => res_r8(c, 0b0001_0000, Reg::D),
+        0xA3 => res_r8(c, 0b0001_0000, Reg::E),
+        0xA4 => res_r8(c, 0b0001_0000, Reg::H),
+        0xA5 => res_r8(c, 0b0001_0000, Reg::L),
+        0xA6 => res_hlm(c, 0b0001_0000),
+        0xA7 => res_r8(c, 0b0001_0000, Reg::A),
+        0xA8 => res_r8(c, 0b0010_0000, Reg::B),
+        0xA9 => res_r8(c, 0b0010_0000, Reg::C),
+        0xAA => res_r8(c, 0b0010_0000, Reg::D),
+        0xAB => res_r8(c, 0b0010_0000, Reg::E),
+        0xAC => res_r8(c, 0b0010_0000, Reg::H),
+        0xAD => res_r8(c, 0b0010_0000, Reg::L),
+        0xAE => res_hlm(c, 0b0010_0000),
+        0xAF => res_r8(c, 0b0010_0000, Reg::A),
+        0xB0 => res_r8(c, 0b0100_0000, Reg::B),
+        0xB1 => res_r8(c, 0b0100_0000, Reg::C),
+        0xB2 => res_r8(c, 0b0100_0000, Reg::D),
+        0xB3 => res_r8(c, 0b0100_0000, Reg::E),
+        0xB4 => res_r8(c, 0b0100_0000, Reg::H),
+        0xB5 => res_r8(c, 0b0100_0000, Reg::L),
+        0xB6 => res_hlm(c, 0b0100_0000),
+        0xB7 => res_r8(c, 0b0100_0000, Reg::A),
+        0xB8 => res_r8(c, 0b1000_0000, Reg::B),
+        0xB9 => res_r8(c, 0b1000_0000, Reg::C),
+        0xBA => res_r8(c, 0b1000_0000, Reg::D),
+        0xBB => res_r8(c, 0b1000_0000, Reg::E),
+        0xBC => res_r8(c, 0b1000_0000, Reg::H),
+        0xBD => res_r8(c, 0b1000_0000, Reg::L),
+        0xBE => res_hlm(c, 0b1000_0000),
+        0xBF => res_r8(c, 0b1000_0000, Reg::A),
+        //set
+        0xC0 => set_r8(c, 0b0000_0001, Reg::B),
+        0xC1 => set_r8(c, 0b0000_0001, Reg::C),
+        0xC2 => set_r8(c, 0b0000_0001, Reg::D),
+        0xC3 => set_r8(c, 0b0000_0001, Reg::E),
+        0xC4 => set_r8(c, 0b0000_0001, Reg::H),
+        0xC5 => set_r8(c, 0b0000_0001, Reg::L),
+        0xC6 => set_hlm(c, 0b0000_0001),
+        0xC7 => set_r8(c, 0b0000_0001, Reg::A),
+        0xC8 => set_r8(c, 0b0000_0010, Reg::B),
+        0xC9 => set_r8(c, 0b0000_0010, Reg::C),
+        0xCA => set_r8(c, 0b0000_0010, Reg::D),
+        0xCB => set_r8(c, 0b0000_0010, Reg::E),
+        0xCC => set_r8(c, 0b0000_0010, Reg::H),
+        0xCD => set_r8(c, 0b0000_0010, Reg::L),
+        0xCE => set_hlm(c, 0b0000_0010),
+        0xCF => set_r8(c, 0b0000_0010, Reg::A),
+        0xD0 => set_r8(c, 0b0000_0100, Reg::B),
+        0xD1 => set_r8(c, 0b0000_0100, Reg::C),
+        0xD2 => set_r8(c, 0b0000_0100, Reg::D),
+        0xD3 => set_r8(c, 0b0000_0100, Reg::E),
+        0xD4 => set_r8(c, 0b0000_0100, Reg::H),
+        0xD5 => set_r8(c, 0b0000_0100, Reg::L),
+        0xD6 => set_hlm(c, 0b0000_0100),
+        0xD7 => set_r8(c, 0b0000_0100, Reg::A),
+        0xD8 => set_r8(c, 0b0000_1000, Reg::B),
+        0xD9 => set_r8(c, 0b0000_1000, Reg::C),
+        0xDA => set_r8(c, 0b0000_1000, Reg::D),
+        0xDB => set_r8(c, 0b0000_1000, Reg::E),
+        0xDC => set_r8(c, 0b0000_1000, Reg::H),
+        0xDD => set_r8(c, 0b0000_1000, Reg::L),
+        0xDE => set_hlm(c, 0b0000_1000),
+        0xDF => set_r8(c, 0b0000_1000, Reg::A),
+        0xE0 => set_r8(c, 0b0001_0000, Reg::B),
+        0xE1 => set_r8(c, 0b0001_0000, Reg::C),
+        0xE2 => set_r8(c, 0b0001_0000, Reg::D),
+        0xE3 => set_r8(c, 0b0001_0000, Reg::E),
+        0xE4 => set_r8(c, 0b0001_0000, Reg::H),
+        0xE5 => set_r8(c, 0b0001_0000, Reg::L),
+        0xE6 => set_hlm(c, 0b0001_0000),
+        0xE7 => set_r8(c, 0b0001_0000, Reg::A),
+        0xE8 => set_r8(c, 0b0010_0000, Reg::B),
+        0xE9 => set_r8(c, 0b0010_0000, Reg::C),
+        0xEA => set_r8(c, 0b0010_0000, Reg::D),
+        0xEB => set_r8(c, 0b0010_0000, Reg::E),
+        0xEC => set_r8(c, 0b0010_0000, Reg::H),
+        0xED => set_r8(c, 0b0010_0000, Reg::L),
+        0xEE => set_hlm(c, 0b0010_0000),
+        0xEF => set_r8(c, 0b0010_0000, Reg::A),
+        0xF0 => set_r8(c, 0b0100_0000, Reg::B),
+        0xF1 => set_r8(c, 0b0100_0000, Reg::C),
+        0xF2 => set_r8(c, 0b0100_0000, Reg::D),
+        0xF3 => set_r8(c, 0b0100_0000, Reg::E),
+        0xF4 => set_r8(c, 0b0100_0000, Reg::H),
+        0xF5 => set_r8(c, 0b0100_0000, Reg::L),
+        0xF6 => set_hlm(c, 0b0100_0000),
+        0xF7 => set_r8(c, 0b0100_0000, Reg::A),
+        0xF8 => set_r8(c, 0b1000_0000, Reg::B),
+        0xF9 => set_r8(c, 0b1000_0000, Reg::C),
+        0xFA => set_r8(c, 0b1000_0000, Reg::D),
+        0xFB => set_r8(c, 0b1000_0000, Reg::E),
+        0xFC => set_r8(c, 0b1000_0000, Reg::H),
+        0xFD => set_r8(c, 0b1000_0000, Reg::L),
+        0xFE => set_hlm(c, 0b1000_0000),
+        0xFF => set_r8(c, 0b1000_0000, Reg::A),
     }
 }

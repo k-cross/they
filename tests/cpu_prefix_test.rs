@@ -254,3 +254,39 @@ fn test_bit_hlm() {
     assert!(!cpu.check_flag(ALUFlag::N));
     assert!(!cpu.check_flag(ALUFlag::C));
 }
+
+#[test]
+fn test_res_r8() {
+    let mut cpu = setup(0x80);
+    cpu.registers.b = 0x1;
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0x0);
+    assert_eq!(cpu.registers.pc, 0x2);
+}
+
+#[test]
+fn test_res_hlm() {
+    let mut cpu = setup(0x86);
+    cpu.memory.ram[0x0100] = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.memory.ram[0x0100], 0xFE);
+    assert_eq!(cpu.registers.pc, 0x2);
+}
+
+#[test]
+fn test_set_r8() {
+    let mut cpu = setup(0xC0);
+    cpu.registers.b = 0x0;
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0x1);
+    assert_eq!(cpu.registers.pc, 0x2);
+}
+
+#[test]
+fn test_set_hlm() {
+    let mut cpu = setup(0xC6);
+    cpu.memory.ram[0x0100] = 0x0;
+    cpu.exec();
+    assert_eq!(cpu.memory.ram[0x0100], 0x1);
+    assert_eq!(cpu.registers.pc, 0x2);
+}
