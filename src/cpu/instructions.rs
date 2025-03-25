@@ -71,9 +71,39 @@ fn ld_a16m_sp(c: &mut CPU) -> u8 {
     3
 }
 
+fn ld_a8m_a(c: &mut CPU) -> u8 {
+    let addr = 0xFF00 | c.get_instr() as u16;
+    c.memory.write_byte(addr, c.registers.acc);
+    3
+}
+
+fn ld_a_a8m(c: &mut CPU) -> u8 {
+    let addr = 0xFF00 | c.get_instr() as u16;
+    c.registers.acc = c.memory.read_byte(addr);
+    3
+}
+
 fn ld_a_r16m(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let addr = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
     c.registers.acc = c.memory.read_byte(addr);
+    2
+}
+
+fn ld_hl_spe8(c: &mut CPU) -> u8 {
+    let mut hl = c.registers.sp;
+    let b = c.get_instr() as i16 as u16;
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::Z, false);
+    c.set_flag(ALUFlag::H, (hl & 0x000F) + (b & 0x000F) > 0x000F);
+    c.set_flag(ALUFlag::C, (hl & 0x00FF) + (b & 0x00FF) > 0x00FF);
+    hl = hl.wrapping_add(b);
+    c.registers.high = (hl >> 8) as u8;
+    c.registers.low = hl as u8;
+    3
+}
+
+fn ld_sp_hl(c: &mut CPU) -> u8 {
+    c.registers.sp = (c.registers.high as u16) << 8 | c.registers.low as u16;
     2
 }
 
@@ -112,6 +142,29 @@ fn ld_a_hldm(c: &mut CPU) -> u8 {
     c.registers.high = (hl >> 8) as u8;
     c.registers.low = hl as u8;
     c.registers.acc = v;
+    2
+}
+
+fn ld_a16m_a(c: &mut CPU) -> u8 {
+    let addr = c.get_word_instr();
+    c.memory.write_byte(addr, c.registers.acc);
+    4
+}
+
+fn ld_a_a16m(c: &mut CPU) -> u8 {
+    let addr = c.get_word_instr();
+    c.registers.acc = c.memory.read_byte(addr);
+    4
+}
+
+fn ld_cm_a(c: &mut CPU) -> u8 {
+    c.memory
+        .write_byte(0xFF00 | c.registers.c as u16, c.registers.acc);
+    2
+}
+
+fn ld_a_cm(c: &mut CPU) -> u8 {
+    c.registers.acc = c.memory.read_byte(0xFF00 | c.registers.c as u16);
     2
 }
 
@@ -478,6 +531,17 @@ fn add_r16_sp(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     }
     c.set_flag(ALUFlag::N, false);
     2
+}
+
+fn add_sp_e8(c: &mut CPU) -> u8 {
+    let a = c.registers.sp;
+    let b = c.get_instr() as i8 as i16 as u16;
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::Z, false);
+    c.set_flag(ALUFlag::H, (a & 0x000F) + (b & 0x000F) > 0x000F);
+    c.set_flag(ALUFlag::C, (a & 0x00FF) + (b & 0x00FF) > 0x00FF);
+    c.registers.sp = a.wrapping_add(b);
+    4
 }
 
 fn sub_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
@@ -923,6 +987,11 @@ fn ret_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
     }
 }
 
+fn jp_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    c.registers.pc = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    4
+}
+
 fn jp_a16(c: &mut CPU) -> u8 {
     c.registers.pc = c.get_word_instr();
     3
@@ -981,6 +1050,23 @@ fn rst(c: &mut CPU, val: u16) -> u8 {
 fn prefix(c: &mut CPU) -> u8 {
     let opcode = c.get_instr();
     1 + prefix_instructions::operation(c, opcode)
+}
+
+fn reti(c: &mut CPU) -> u8 {
+    c.registers.pc = c.memory.read_word(c.registers.sp);
+    c.registers.sp += 2;
+    c.ei = true;
+    4
+}
+
+fn di(c: &mut CPU) -> u8 {
+    c.di = true;
+    1
+}
+
+fn ei(c: &mut CPU) -> u8 {
+    c.ei = true;
+    1
 }
 
 // Helpers
@@ -1230,20 +1316,47 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0xD4 => call_a16_cc(c, ALUFlag::C, false),
         0xD5 => push_r16(c, Reg::D, Reg::E),
         0xD6 => sub_r8_n8(c, Reg::A),
+        0xD7 => rst(c, 0x10),
         0xD8 => ret_cc(c, ALUFlag::C, true),
+        0xD9 => reti(c),
         0xDA => jp_a16_cc(c, ALUFlag::C, true),
         // no DB
         0xDC => call_a16_cc(c, ALUFlag::C, true),
         // no DD
         0xDE => sbc_r8_n8(c, Reg::A),
+        0xDF => rst(c, 0x18),
+        0xE0 => ld_a8m_a(c),
         0xE1 => pop_r16(c, Reg::H, Reg::L),
+        0xE2 => ld_cm_a(c),
+        // no E3
+        // no E4
         0xE5 => push_r16(c, Reg::H, Reg::L),
         0xE6 => and_r8_n8(c, Reg::A),
+        0xE7 => rst(c, 0x20),
+        0xE8 => add_sp_e8(c),
+        0xE9 => jp_r16(c, Reg::H, Reg::L),
+        0xEA => ld_a16m_a(c),
+        // no EB
+        // no EC
+        // no ED
         0xEE => xor_r8_n8(c, Reg::A),
+        0xEF => rst(c, 0x28),
+        0xF0 => ld_a_a8m(c),
         0xF1 => pop_r16(c, Reg::A, Reg::FLAGS),
+        0xF2 => ld_a_cm(c),
+        0xF3 => di(c),
+        // no F4
         0xF5 => push_r16(c, Reg::A, Reg::FLAGS),
         0xF6 => or_r8_n8(c, Reg::A),
+        0xF7 => rst(c, 0x30),
+        0xF8 => ld_hl_spe8(c),
+        0xF9 => ld_sp_hl(c),
+        0xFA => ld_a_a16m(c),
+        0xFB => ei(c),
+        // no FC
+        // no FD
         0xFE => cp_r8_n8(c, Reg::A),
+        0xFF => rst(c, 0x38),
         _ => {
             eprintln!("OpCode is not implemented: {}", opcode);
             1

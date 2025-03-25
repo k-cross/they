@@ -118,7 +118,7 @@ impl CPU {
             registers: Registers::new(),
             memory: Memory::new(),
             ime: true,
-            di: true,
+            di: false,
             ei: true,
             halt: false,
             stop: false,

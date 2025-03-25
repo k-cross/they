@@ -935,3 +935,15 @@ fn test_cp_r8_n8() {
     assert!(!cpu.check_flag(ALUFlag::H));
     assert!(cpu.check_flag(ALUFlag::N));
 }
+
+#[test]
+fn test_reti_cc() {
+    let mut cpu = setup(0xD9);
+    cpu.registers.sp = 0x0100;
+    cpu.memory.ram[0x0100] = 0xA;
+    cpu.ei = false;
+    cpu.exec();
+    assert_eq!(cpu.registers.sp, 0x102);
+    assert_eq!(cpu.registers.pc, 0xA00);
+    assert!(cpu.ei);
+}
