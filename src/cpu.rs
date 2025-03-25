@@ -1,8 +1,9 @@
 use crate::ram::Memory;
-use opcodes::operations;
+use instructions::operations;
 use std::fmt;
 
-pub mod opcodes;
+pub mod instructions;
+pub mod prefix_instructions;
 
 /// The LR35902 CPU Registers
 ///

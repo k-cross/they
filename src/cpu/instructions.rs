@@ -1,8 +1,8 @@
-use super::{ALUFlag, CPU};
+use super::{ALUFlag, CPU, prefix_instructions};
 
 // private to make functions more generic since a lot of the handling will be
 // the same.
-enum Reg {
+pub(crate) enum Reg {
     A,
     B,
     C,
@@ -971,8 +971,20 @@ fn push_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     4
 }
 
+fn rst(c: &mut CPU, val: u16) -> u8 {
+    c.registers.sp -= 2;
+    c.memory.write_word(c.registers.sp, c.registers.pc);
+    c.registers.pc = val;
+    4
+}
+
+fn prefix(c: &mut CPU) -> u8 {
+    let opcode = c.get_instr();
+    1 + prefix_instructions::operation(c, opcode)
+}
+
 // Helpers
-fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
+pub(crate) fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
     match r {
         Reg::A => c.registers.acc,
         Reg::B => c.registers.b,
@@ -985,7 +997,7 @@ fn read_reg(c: &mut CPU, r: &Reg) -> u8 {
     }
 }
 
-fn write_reg(c: &mut CPU, r: &Reg, v: u8) {
+pub(crate) fn write_reg(c: &mut CPU, r: &Reg, v: u8) {
     match r {
         Reg::A => c.registers.acc = v,
         Reg::B => c.registers.b = v,
@@ -1202,11 +1214,15 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0xC4 => call_a16_cc(c, ALUFlag::Z, false),
         0xC5 => push_r16(c, Reg::B, Reg::C),
         0xC6 => add_r8_n8(c, Reg::A),
+        0xC7 => rst(c, 0x0),
         0xC8 => ret_cc(c, ALUFlag::Z, true),
         0xC9 => ret(c),
         0xCA => jp_a16_cc(c, ALUFlag::Z, true),
+        0xCB => prefix(c),
+        0xCC => call_a16_cc(c, ALUFlag::Z, true),
         0xCD => call_a16(c),
         0xCE => adc_r8_n8(c, Reg::A),
+        0xCF => rst(c, 0x8),
         0xD0 => ret_cc(c, ALUFlag::C, false),
         0xD1 => pop_r16(c, Reg::D, Reg::E),
         0xD2 => jp_a16_cc(c, ALUFlag::C, false),
@@ -1216,6 +1232,9 @@ pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
         0xD6 => sub_r8_n8(c, Reg::A),
         0xD8 => ret_cc(c, ALUFlag::C, true),
         0xDA => jp_a16_cc(c, ALUFlag::C, true),
+        // no DB
+        0xDC => call_a16_cc(c, ALUFlag::C, true),
+        // no DD
         0xDE => sbc_r8_n8(c, Reg::A),
         0xE1 => pop_r16(c, Reg::H, Reg::L),
         0xE5 => push_r16(c, Reg::H, Reg::L),
