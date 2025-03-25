@@ -864,9 +864,10 @@ fn scf(c: &mut CPU) -> u8 {
     1
 }
 
-fn stop_n8(_c: &mut CPU) -> u8 {
+fn stop_n8(c: &mut CPU) -> u8 {
     // mostly used to switch speeds, ignoring for now
-    todo!()
+    c.stop = true;
+    4
 }
 
 fn jr_e8(c: &mut CPU) -> u8 {

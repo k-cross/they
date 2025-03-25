@@ -1,9 +1,132 @@
 use super::{ALUFlag, CPU};
 use crate::cpu::instructions::{Reg, read_reg, write_reg};
 
-pub fn operation(_c: &mut CPU, opcode: u8) -> u8 {
+fn rlc_r8(c: &mut CPU, r: Reg) -> u8 {
+    let rv = read_reg(c, &r);
+    let v = (rv << 1) | if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    write_reg(c, &r, v);
+    c.set_flag(ALUFlag::C, v & 0x80 == 0x80);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    2
+}
+
+fn rlc_hlm(c: &mut CPU) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let rv = c.memory.read_byte(addr);
+    let v = (rv << 1) | if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    c.memory.write_byte(addr, v);
+    c.set_flag(ALUFlag::C, v & 0x80 == 0x80);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    4
+}
+
+fn rrc_r8(c: &mut CPU, r: Reg) -> u8 {
+    let rv = read_reg(c, &r);
+    let v = (rv >> 1) | if c.check_flag(ALUFlag::C) { 0x80 } else { 0 };
+    write_reg(c, &r, v);
+    c.set_flag(ALUFlag::C, v & 0x01 == 0x01);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    2
+}
+
+fn rrc_hlm(c: &mut CPU) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let rv = c.memory.read_byte(addr);
+    let v = (rv >> 1) | if c.check_flag(ALUFlag::C) { 0x80 } else { 0 };
+    c.memory.write_byte(addr, v);
+    c.set_flag(ALUFlag::C, v & 0x01 == 0x01);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    4
+}
+
+fn rl_r8(c: &mut CPU, r: Reg) -> u8 {
+    let rv = read_reg(c, &r);
+    let v = rv << 1;
+    write_reg(c, &r, v);
+    c.set_flag(ALUFlag::C, v & 0x80 == 0x80);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    2
+}
+
+fn rl_hlm(c: &mut CPU) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let rv = c.memory.read_byte(addr);
+    let v = rv << 1;
+    c.memory.write_byte(addr, v);
+    c.set_flag(ALUFlag::C, v & 0x80 == 0x80);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    4
+}
+
+fn rr_r8(c: &mut CPU, r: Reg) -> u8 {
+    let rv = read_reg(c, &r);
+    let v = rv >> 1;
+    write_reg(c, &r, v);
+    c.set_flag(ALUFlag::C, v & 0x01 == 0x01);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    2
+}
+
+fn rr_hlm(c: &mut CPU) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let rv = c.memory.read_byte(addr);
+    let v = rv >> 1;
+    c.memory.write_byte(addr, v);
+    c.set_flag(ALUFlag::C, v & 0x01 == 0x01);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    4
+}
+
+pub fn operation(c: &mut CPU, opcode: u8) -> u8 {
     match opcode {
-        0x0 => todo!(),
+        0x00 => rlc_r8(c, Reg::B),
+        0x01 => rlc_r8(c, Reg::C),
+        0x02 => rlc_r8(c, Reg::D),
+        0x03 => rlc_r8(c, Reg::E),
+        0x04 => rlc_r8(c, Reg::H),
+        0x05 => rlc_r8(c, Reg::L),
+        0x06 => rlc_hlm(c),
+        0x07 => rlc_r8(c, Reg::A),
+        0x08 => rrc_r8(c, Reg::B),
+        0x09 => rrc_r8(c, Reg::C),
+        0x0A => rrc_r8(c, Reg::D),
+        0x0B => rrc_r8(c, Reg::E),
+        0x0C => rrc_r8(c, Reg::H),
+        0x0D => rrc_r8(c, Reg::L),
+        0x0E => rrc_hlm(c),
+        0x0F => rrc_r8(c, Reg::A),
+        0x10 => rl_r8(c, Reg::B),
+        0x11 => rl_r8(c, Reg::C),
+        0x12 => rl_r8(c, Reg::D),
+        0x13 => rl_r8(c, Reg::E),
+        0x14 => rl_r8(c, Reg::H),
+        0x15 => rl_r8(c, Reg::L),
+        0x16 => rl_hlm(c),
+        0x17 => rl_r8(c, Reg::A),
+        0x18 => rr_r8(c, Reg::B),
+        0x19 => rr_r8(c, Reg::C),
+        0x1A => rr_r8(c, Reg::D),
+        0x1B => rr_r8(c, Reg::E),
+        0x1C => rr_r8(c, Reg::H),
+        0x1D => rr_r8(c, Reg::L),
+        0x1E => rr_hlm(c),
+        0x1F => rr_r8(c, Reg::A),
         _ => {
             eprintln!("Prefix Opcode is not implemented: {}", opcode);
             1
