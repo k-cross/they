@@ -151,13 +151,14 @@ fn test_sla_hlm() {
 #[test]
 fn test_sra_r8() {
     let mut cpu = setup(0x28);
+    cpu.registers.b = 0x8F;
     cpu.exec();
-    assert_eq!(cpu.registers.b, 0x1);
+    assert_eq!(cpu.registers.b, 0xC7);
     assert_eq!(cpu.registers.pc, 0x2);
     assert!(!cpu.check_flag(ALUFlag::Z));
     assert!(!cpu.check_flag(ALUFlag::H));
     assert!(!cpu.check_flag(ALUFlag::N));
-    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(cpu.check_flag(ALUFlag::C));
 }
 
 #[test]
@@ -172,4 +173,58 @@ fn test_sra_hlm() {
     assert!(!cpu.check_flag(ALUFlag::H));
     assert!(!cpu.check_flag(ALUFlag::N));
     assert!(cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_srl_r8() {
+    let mut cpu = setup(0x38);
+    cpu.registers.b = 0x8F;
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0x47);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_srl_hlm() {
+    let mut cpu = setup(0x3E);
+    cpu.memory.ram[0x0100] = 0xF0;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.memory.ram[0x0100], 0x78);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_swap_r8() {
+    let mut cpu = setup(0x30);
+    cpu.registers.b = 0x8F;
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0xF8);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_swap_hlm() {
+    let mut cpu = setup(0x36);
+    cpu.memory.ram[0x0100] = 0xF0;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.memory.ram[0x0100], 0x0F);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
 }
