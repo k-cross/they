@@ -794,6 +794,21 @@ fn test_adc_r8_n8() {
 }
 
 #[test]
+fn test_add_r8_n8() {
+    // specific opcode for registers b,c
+    let mut cpu = setup(0xC6);
+    cpu.memory.ram[0x01] = 0xA;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.acc, 0xB);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
 fn test_call_a16_cc() {
     // test positive condition
     let mut cpu = setup(0xC4);
@@ -831,4 +846,92 @@ fn test_push_r16() {
     assert_eq!(cpu.memory.ram[0x101], 0x2);
     assert_eq!(cpu.registers.b, 0x2);
     assert_eq!(cpu.registers.c, 0x2);
+}
+
+#[test]
+fn test_sub_r8_n8() {
+    let mut cpu = setup(0xD6);
+    cpu.memory.ram[0x01] = 0xA;
+    cpu.registers.acc = 0xC;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.acc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_sbc_r8_n8() {
+    let mut cpu = setup(0xDE);
+    cpu.memory.ram[0x01] = 0xA;
+    cpu.registers.acc = 0xC;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.acc, 0x1);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_and_r8_n8() {
+    let mut cpu = setup(0xE6);
+    cpu.registers.acc = 0xFF;
+    cpu.memory.ram[0x01] = 0xA;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.acc, 0xA);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_or_r8_n8() {
+    let mut cpu = setup(0xF6);
+    cpu.registers.acc = 0xFF;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.acc, 0xFF);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_xor_r8_n8() {
+    let mut cpu = setup(0xEE);
+    cpu.registers.acc = 0xF0;
+    cpu.memory.ram[0x01] = 0xFA;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.acc, 0xA);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+}
+
+#[test]
+fn test_cp_r8_n8() {
+    let mut cpu = setup(0xFE);
+    cpu.registers.acc = 0x2;
+    cpu.memory.ram[0x01] = 0x02;
+    cpu.exec();
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert_eq!(cpu.registers.acc, 0x2);
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(cpu.check_flag(ALUFlag::N));
 }
