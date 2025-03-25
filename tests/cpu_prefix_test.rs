@@ -228,3 +228,29 @@ fn test_swap_hlm() {
     assert!(!cpu.check_flag(ALUFlag::N));
     assert!(!cpu.check_flag(ALUFlag::C));
 }
+
+#[test]
+fn test_bit_r8() {
+    let mut cpu = setup(0x40);
+    cpu.registers.b = 0x0;
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0x0);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_bit_hlm() {
+    let mut cpu = setup(0x46);
+    cpu.memory.ram[0x0100] = 0xFF;
+    cpu.exec();
+    assert_eq!(cpu.memory.ram[0x0100], 0xFF);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+}
