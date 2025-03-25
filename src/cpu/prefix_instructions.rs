@@ -105,8 +105,54 @@ fn rrc_hlm(c: &mut CPU) -> u8 {
     4
 }
 
+// 9 bit shift
 fn sla_r8(c: &mut CPU, r: Reg) -> u8 {
-    8
+    let rv = read_reg(c, &r);
+    let v = rv << 1;
+    write_reg(c, &r, v);
+    c.set_flag(ALUFlag::C, rv & 0x80 == 0x80);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    2
+}
+
+// 9 bit shift
+fn sla_hlm(c: &mut CPU) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let rv = c.memory.read_byte(addr);
+    let v = rv << 1;
+    c.memory.write_byte(addr, v);
+    c.set_flag(ALUFlag::C, rv & 0x80 == 0x80);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    4
+}
+
+// 9 bit shift
+fn sra_r8(c: &mut CPU, r: Reg) -> u8 {
+    let rv = read_reg(c, &r);
+    let v = rv >> 1;
+    write_reg(c, &r, v);
+    c.set_flag(ALUFlag::C, rv & 1 == 1);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    2
+}
+
+// 9 bit shift
+fn sra_hlm(c: &mut CPU) -> u8 {
+    let addr = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let rv = c.memory.read_byte(addr);
+    let v = rv >> 1;
+    c.memory.write_byte(addr, v);
+    c.set_flag(ALUFlag::C, rv & 1 == 1);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
+    4
 }
 
 pub(crate) fn operation(c: &mut CPU, opcode: u8) -> u8 {
@@ -143,7 +189,22 @@ pub(crate) fn operation(c: &mut CPU, opcode: u8) -> u8 {
         0x1D => rr_r8(c, Reg::L),
         0x1E => rr_hlm(c),
         0x1F => rr_r8(c, Reg::A),
-        0x20 => sla_r8(c, Reg::A),
+        0x20 => sla_r8(c, Reg::B),
+        0x21 => sla_r8(c, Reg::C),
+        0x22 => sla_r8(c, Reg::D),
+        0x23 => sla_r8(c, Reg::E),
+        0x24 => sla_r8(c, Reg::H),
+        0x25 => sla_r8(c, Reg::L),
+        0x26 => sla_hlm(c),
+        0x27 => sla_r8(c, Reg::A),
+        0x28 => sra_r8(c, Reg::B),
+        0x29 => sra_r8(c, Reg::C),
+        0x2A => sra_r8(c, Reg::D),
+        0x2B => sra_r8(c, Reg::E),
+        0x2C => sra_r8(c, Reg::H),
+        0x2D => sra_r8(c, Reg::L),
+        0x2E => sra_hlm(c),
+        0x2F => sra_r8(c, Reg::A),
         _ => {
             eprintln!("Prefix Opcode is not implemented: {}", opcode);
             1

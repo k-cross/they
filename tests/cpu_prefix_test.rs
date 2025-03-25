@@ -121,3 +121,55 @@ fn test_rrc_hlm() {
     assert!(!cpu.check_flag(ALUFlag::N));
     assert!(!cpu.check_flag(ALUFlag::C));
 }
+
+#[test]
+fn test_sla_r8() {
+    let mut cpu = setup(0x20);
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0x4);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_sla_hlm() {
+    let mut cpu = setup(0x26);
+    cpu.memory.ram[0x0100] = 0xF0;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.memory.ram[0x0100], 0xE0);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_sra_r8() {
+    let mut cpu = setup(0x28);
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0x1);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+}
+
+#[test]
+fn test_sra_hlm() {
+    let mut cpu = setup(0x2E);
+    cpu.memory.ram[0x0100] = 0x0F;
+    cpu.set_flag(ALUFlag::C, true);
+    cpu.exec();
+    assert_eq!(cpu.memory.ram[0x0100], 0x7);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(cpu.check_flag(ALUFlag::C));
+}
