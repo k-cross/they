@@ -38,7 +38,6 @@ impl Display {
             }; 40],
         }
     }
-    pub fn render() {}
 }
 
 pub struct ObjectAttributeMap {
