@@ -87,6 +87,7 @@ impl Memory {
         m
     }
 
+    // These could change depending on which GB version
     fn initialize(&mut self) {
         self.write_byte(MemoryRegisters::NR10 as u16, 0x80);
         self.write_byte(MemoryRegisters::NR11 as u16, 0xBF);

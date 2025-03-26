@@ -1,7 +1,12 @@
-use crate::{cpu::CPU, display::Display, sound::Voices};
+use crate::{cpu::CPU, ppu::Display, sound::Voices};
 
 /// The Motherboard controls all the coordination involved between the disparate
-/// hardware components
+/// hardware components.
+///
+/// Bringup needs to happen in a particular order:
+///   1. CPU - Set Registers
+///   2. RAM - Set Hardware Adress Registers
+///   3. PPU - These are all set by reading from RAM
 #[derive(Debug)]
 pub struct Motherboard {
     pub cpu: CPU,

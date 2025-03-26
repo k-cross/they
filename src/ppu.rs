@@ -38,6 +38,15 @@ impl Display {
             }; 40],
         }
     }
+
+    pub fn set_lcdc(lcdc_val: u8, flags: Vec<LCDC>) -> u8 {
+        lcdc_val | flags.into_iter().fold(0u8, |acc, f| (acc | f as u8))
+    }
+
+    pub fn check_lcdc(lcdc_val: &u8, flags: Vec<LCDC>) -> bool {
+        let f = flags.into_iter().fold(0u8, |acc, f| (acc | f as u8));
+        lcdc_val & f == f
+    }
 }
 
 pub struct ObjectAttributeMap {
@@ -72,7 +81,7 @@ pub enum RGB {
 /// only encodes their memory location
 #[derive(Debug)]
 pub enum Register {
-    LCD = 0xFF40,
+    LCDC = 0xFF40,
     STAT = 0xFF41,
     SCY = 0xFF42,
     SCX = 0xFF43,
@@ -83,4 +92,24 @@ pub enum Register {
     OBP1 = 0xFF48,
     WY = 0xFF49,
     WX = 0xFF4A,
+}
+
+/// LCD & PPU enable: 0 = Off; 1 = On
+/// Window tile map area: 0 = 9800–9BFF; 1 = 9C00–9FFF
+/// Window enable: 0 = Off; 1 = On
+/// BG & Window tile data area: 0 = 8800–97FF; 1 = 8000–8FFF
+/// BG tile map area: 0 = 9800–9BFF; 1 = 9C00–9FFF
+/// OBJ size: 0 = 8×8; 1 = 8×16
+/// OBJ enable: 0 = Off; 1 = On
+/// BG & Window enable / priority [Different meaning in CGB Mode]: 0 = Off; 1 = On
+#[derive(Debug)]
+pub enum LCDC {
+    PPUEnabled = 0b1000_0000,
+    WindowTileMapArea = 0b0100_0000,
+    WindowEnabled = 0b0010_0000,
+    WindowDataArea = 0b0001_0000,
+    BgTileMapArea = 0b0000_1000,
+    ObjSize = 0b0000_0100,
+    ObjEnabled = 0b0000_0010,
+    BgWindowPriority = 0b0000_0001,
 }

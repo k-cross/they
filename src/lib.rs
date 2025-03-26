@@ -1,8 +1,8 @@
 pub mod cartridge;
 pub mod cpu;
-pub mod display;
 pub mod interface;
 pub mod motherboard;
+pub mod ppu;
 pub mod ram;
 pub mod sound;
 
