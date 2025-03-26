@@ -3,6 +3,7 @@ pub mod cpu;
 pub mod display;
 pub mod motherboard;
 pub mod ram;
+pub mod sound;
 
 // timing of hardware components
 pub const CPU_HZ: u32 = 4_194_304;

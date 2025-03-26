@@ -1,6 +1,14 @@
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Tile {
-    pixels: [[u8; 8]; 8],
+    pub pixels: [[u8; 8]; 8],
+}
+
+impl Tile {
+    fn new() -> Tile {
+        Tile {
+            pixels: [[0; 8]; 8],
+        }
+    }
 }
 
 /// The display encodes how all the graphics hardware is tied together. The
@@ -10,26 +18,42 @@ pub struct Tile {
 /// full screen is only 144 x 160 pixels.
 #[derive(Debug)]
 pub struct Display {
-    tiles: [Tile; 384],
+    pub tiles: [Tile; 384],
     // the (x, y) position of what can be shown
-    view_port: (u8, u8),
+    pub view_port: (u8, u8),
     // aka OAM (Object Attribut Memory)
-    sprites: [Sprite; 40],
+    pub sprites: [Sprite; 40],
+}
+
+impl Display {
+    /// The sprite_size argument defaults to false or small
+    pub fn new(sprite_size: bool) -> Display {
+        Display {
+            tiles: [Tile::new(); 384],
+            view_port: (0, 0),
+            sprites: [if sprite_size {
+                Sprite::Big([[0; 8]; 16])
+            } else {
+                Sprite::Little([[0; 8]; 8])
+            }; 40],
+        }
+    }
+    pub fn render() {}
 }
 
 pub struct ObjectAttributeMap {
-    x: u8,
-    y: u8,
-    tile_number: u8,
-    priority: u8,
-    flip_x: bool,
-    flip_y: bool,
-    palette: bool,
+    pub x: u8,
+    pub y: u8,
+    pub tile_number: u8,
+    pub priority: u8,
+    pub flip_x: bool,
+    pub flip_y: bool,
+    pub palette: bool,
 }
 
 /// There are two types of sprites that can be used, one that is 8 x 8 pixels
 /// and one that is 8 x 16 pixels
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Sprite {
     Big([[u8; 8]; 16]),
     Little([[u8; 8]; 8]),
@@ -47,6 +71,7 @@ pub enum RGB {
 
 /// Registers are actually 16 bit memory addresses to 8 bit storage, this enum
 /// only encodes their memory location
+#[derive(Debug)]
 pub enum Register {
     LCD = 0xFF40,
     STAT = 0xFF41,
