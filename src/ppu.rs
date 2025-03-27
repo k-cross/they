@@ -1,4 +1,5 @@
 use crate::cpu::CPU;
+use std::ops::Range;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Tile {
@@ -51,7 +52,17 @@ impl Display {
     }
 
     pub fn load_tiles(&mut self, cpu: &mut CPU, block: u8) {
-        for (i, addr) in (0x8000..0x8800).step_by(16).enumerate() {
+        // Does the tile ordering get affected depending on the memory switch?
+        match block {
+            0 => self.load_tile_range(cpu, 0x8000..0x8800),
+            1 => self.load_tile_range(cpu, 0x8800..0x9000),
+            2 => self.load_tile_range(cpu, 0x9000..0x9800),
+            _ => self.load_tile_range(cpu, 0x8000..0x9800),
+        }
+    }
+
+    fn load_tile_range(&mut self, cpu: &mut CPU, range: Range<u16>) {
+        for (i, addr) in range.step_by(16).enumerate() {
             let mut tile = self.tiles[i];
             for j in 0..8 {
                 let (mut lb, mut hb) = (
@@ -74,16 +85,6 @@ impl Display {
             }
             self.tiles[i] = tile;
         }
-
-        //Load Blocks 1 and 2
-        //
-        //let lcdc = cpu.memory.read_byte(Register::LCDC as u16);
-        //let offset = 0x400;
-        //if self.check_lcdc(&lcdc, vec![LCDC::WindowDataArea]) {
-        //    for (i, addr) in (0x8800..0x9800).step_by(2).enumerate() {
-        //        let pixels = cpu.memory.read_word(addr);
-        //    }
-        //}
     }
 }
 
