@@ -1,3 +1,5 @@
+use crate::cpu::CPU;
+
 #[derive(Debug, Copy, Clone)]
 pub struct Tile {
     pub pixels: [[u8; 8]; 8],
@@ -39,13 +41,22 @@ impl Display {
         }
     }
 
-    pub fn set_lcdc(lcdc_val: u8, flags: Vec<LCDC>) -> u8 {
+    pub fn set_lcdc(&mut self, lcdc_val: u8, flags: Vec<LCDC>) -> u8 {
         lcdc_val | flags.into_iter().fold(0u8, |acc, f| (acc | f as u8))
     }
 
-    pub fn check_lcdc(lcdc_val: &u8, flags: Vec<LCDC>) -> bool {
+    pub fn check_lcdc(&mut self, lcdc_val: &u8, flags: Vec<LCDC>) -> bool {
         let f = flags.into_iter().fold(0u8, |acc, f| (acc | f as u8));
         lcdc_val & f == f
+    }
+
+    pub fn load_tiles(&mut self, cpu: &mut CPU) {
+        let lcdc = cpu.memory.read_byte(Register::LCDC as u16);
+        if self.check_lcdc(&lcdc, vec![LCDC::WindowDataArea]) {
+            for addr in 0x8800..0x97FF {
+                addr;
+            }
+        }
     }
 }
 
