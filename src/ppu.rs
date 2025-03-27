@@ -6,9 +6,9 @@ pub struct Tile {
 }
 
 impl Tile {
-    pub fn new() -> Tile {
+    pub fn new(color: Pixel) -> Tile {
         Tile {
-            pixels: [[Pixel::White; 8]; 8],
+            pixels: [[color; 8]; 8],
         }
     }
 }
@@ -31,7 +31,7 @@ impl Display {
     /// The sprite_size argument defaults to false or small
     pub fn new(sprite_size: bool) -> Display {
         Display {
-            tiles: [Tile::new(); 384],
+            tiles: [Tile::new(Pixel::Black); 384],
             view_port: (0, 0),
             sprites: [if sprite_size {
                 Sprite::Big([[0; 8]; 16])
@@ -170,9 +170,9 @@ mod tests {
     fn load_pixel_test() {
         let (mut cpu, mut disp) = setup();
         disp.load_tiles(&mut cpu, 0);
-        let tile_tester = Tile::new();
-        for tile in disp.tiles {
-            assert_eq!(tile, tile_tester);
+        let white_tile = Tile::new(Pixel::White);
+        for tile in &disp.tiles[0..128] {
+            assert_eq!(tile, &white_tile);
         }
     }
 }

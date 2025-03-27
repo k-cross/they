@@ -11,12 +11,7 @@ pub fn run(mb: Motherboard) -> eframe::Result {
     eframe::run_native(
         "They: Gameboy Emulator",
         options,
-        Box::new(|cc| {
-            // This gives us image support:
-            egui_extras::install_image_loaders(&cc.egui_ctx);
-
-            Ok(Box::<TheyApp>::default())
-        }),
+        Box::new(|cc| Ok(Box::<TheyApp>::default())),
     )
 }
 
@@ -48,8 +43,6 @@ impl eframe::App for TheyApp {
                 self.age += 1;
             }
             ui.label(format!("Hello '{}', age {}", self.name, self.age));
-
-            ui.image(egui::include_image!("/Users/ken/Downloads/pi.jpg"));
         });
     }
 }
