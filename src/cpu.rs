@@ -39,18 +39,20 @@ pub struct Registers {
 }
 
 impl Registers {
+    /// Basic Powerup Sequence
+    ///   * may need to be adjusted based on ROM headers
     pub fn new() -> Registers {
         Registers {
-            acc: 0,
-            b: 0,
-            c: 0,
+            acc: 0x1,
+            b: 0xFF,
+            c: 0x13,
             d: 0,
-            e: 0,
+            e: 0xC1,
             flags: 0,
-            high: 0,
-            low: 0,
-            sp: 0,
-            pc: 0,
+            high: 0x84,
+            low: 0x03,
+            sp: 0xFFFE,
+            pc: 0x0100,
         }
     }
 }

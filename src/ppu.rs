@@ -1,14 +1,14 @@
 use crate::cpu::CPU;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Tile {
-    pub pixels: [[u8; 8]; 8],
+    pub pixels: [[Pixel; 8]; 8],
 }
 
 impl Tile {
-    fn new() -> Tile {
+    pub fn new() -> Tile {
         Tile {
-            pixels: [[0; 8]; 8],
+            pixels: [[Pixel::White; 8]; 8],
         }
     }
 }
@@ -50,13 +50,40 @@ impl Display {
         lcdc_val & f == f
     }
 
-    pub fn load_tiles(&mut self, cpu: &mut CPU) {
-        let lcdc = cpu.memory.read_byte(Register::LCDC as u16);
-        if self.check_lcdc(&lcdc, vec![LCDC::WindowDataArea]) {
-            for addr in 0x8800..0x97FF {
-                addr;
+    pub fn load_tiles(&mut self, cpu: &mut CPU, block: u8) {
+        for (i, addr) in (0x8000..0x8800).step_by(16).enumerate() {
+            let mut tile = self.tiles[i];
+            for j in 0..8 {
+                let (mut lb, mut hb) = (
+                    cpu.memory.read_byte(addr + (j * 2) as u16),
+                    cpu.memory.read_byte(addr + 1 + (j * 2) as u16),
+                );
+                let mut pixel_row = [Pixel::Black; 8];
+                for k in 0..8 {
+                    pixel_row[k] = match (hb & 0x80, lb & 0x80) {
+                        (0x80, 0x80) => Pixel::Black,
+                        (0x0, 0x0) => Pixel::White,
+                        (0x0, 0x80) => Pixel::Grey,
+                        (0x80, 0x0) => Pixel::DarkGrey,
+                        _ => Pixel::Black,
+                    };
+                    hb <<= 1;
+                    lb <<= 1;
+                }
+                tile.pixels[j] = pixel_row;
             }
+            self.tiles[i] = tile;
         }
+
+        //Load Blocks 1 and 2
+        //
+        //let lcdc = cpu.memory.read_byte(Register::LCDC as u16);
+        //let offset = 0x400;
+        //if self.check_lcdc(&lcdc, vec![LCDC::WindowDataArea]) {
+        //    for (i, addr) in (0x8800..0x9800).step_by(2).enumerate() {
+        //        let pixels = cpu.memory.read_word(addr);
+        //    }
+        //}
     }
 }
 
@@ -79,9 +106,15 @@ pub enum Sprite {
 }
 
 /// Pixels are represented with 2 bits but need to be converted to RGB to
-/// display properly on a modern computers.
+/// display properly on a modern computers. There values can be transcoded as 2
+/// bit value codes to RGB:
+///   * White = 0x00
+///   * Grey = 0x01
+///   * DarkGrey = 0x10
+///   * Black = 0x11
 #[repr(u32)]
-pub enum RGB {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Pixel {
     Grey = 0x808080,
     DarkGrey = 0x696969,
     Black = 0x000000,
@@ -123,4 +156,23 @@ pub enum LCDC {
     ObjSize = 0b0000_0100,
     ObjEnabled = 0b0000_0010,
     BgWindowPriority = 0b0000_0001,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup() -> (CPU, Display) {
+        (CPU::new(), Display::new(false))
+    }
+
+    #[test]
+    fn load_pixel_test() {
+        let (mut cpu, mut disp) = setup();
+        disp.load_tiles(&mut cpu, 0);
+        let tile_tester = Tile::new();
+        for tile in disp.tiles {
+            assert_eq!(tile, tile_tester);
+        }
+    }
 }
