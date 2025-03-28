@@ -26,6 +26,14 @@ pub struct Display {
     pub view_port: (u8, u8),
     // aka OAM (Object Attribut Memory)
     pub sprites: [Sprite; 40],
+    pub tile_map: [[u8; 512]; 2],
+    pub scy: u8,
+    pub scx: u8,
+    pub ly: u8,
+    pub lyx: u8,
+    pub wy: u8,
+    pub wx: u8,
+    pub stat: u8,
 }
 
 impl Display {
@@ -33,12 +41,20 @@ impl Display {
     pub fn new(sprite_size: bool) -> Display {
         Display {
             tiles: [Tile::new(Pixel::Black); 384],
+            tile_map: [[0u8; 512]; 2],
             view_port: (0, 0),
             sprites: [if sprite_size {
                 Sprite::Big([[0; 8]; 16])
             } else {
                 Sprite::Little([[0; 8]; 8])
             }; 40],
+            scy: 0,
+            scx: 0,
+            ly: 0,
+            lyx: 0,
+            wy: 0,
+            wx: 0,
+            stat: 0,
         }
     }
 
@@ -61,8 +77,11 @@ impl Display {
         cpu.memory.read_byte(Register::LCDC as u16) & f == f
     }
 
+    /// Blocks can be sequentially loaded in memory, there indexing pattern will be the same across the two different addressing schemes.
+    /// * Block 0: 0-127 (LCDC Bit 4: 1)
+    /// * Block 1: 128-255
+    /// * Block 2: 0-127 (LCDC Bit 4: 0)
     pub fn load_tiles(&mut self, cpu: &mut CPU, block: u8) {
-        // Does the tile ordering get affected depending on the memory switch?
         match block {
             0 => self.load_tile_range(cpu, 0x8000..0x8800),
             1 => self.load_tile_range(cpu, 0x8800..0x9000),
@@ -97,8 +116,18 @@ impl Display {
         }
     }
 
+    /// There are two maps which contain how each tile should be placed
+    /// $9800-$9BFF and $9C00-$9FFF and which one is used is guided by register
+    /// values.
+    pub fn load_tile_map(&mut self, cpu: &mut CPU) {
+        for (i, addr) in (0x9800..0x9C00).enumerate() {
+            self.tile_map[0][i] = cpu.memory.ram[addr];
+            self.tile_map[1][i] = cpu.memory.ram[addr + 1024];
+        }
+    }
+
     /// Return the index of the desired tile.
-    pub fn get_tile(&mut self, cpu: &mut CPU) -> usize {
+    pub fn get_tile(&mut self) -> usize {
         0
     }
 }
@@ -106,11 +135,38 @@ impl Display {
 pub struct ObjectAttributeMap {
     pub x: u8,
     pub y: u8,
-    pub tile_number: u8,
-    pub priority: u8,
+    pub tile_idx: u8,
+    pub priority: bool,
     pub flip_x: bool,
     pub flip_y: bool,
-    pub palette: bool,
+    pub dmg_palette: bool,
+    // bank is for CGB
+    pub bank: bool,
+    // palette is for CGB
+    pub cgb_palette: u8,
+}
+
+impl ObjectAttributeMap {
+    /// Byte 0: y position
+    /// Byte 1: x position
+    /// Byte 2: tile index
+    /// Byte 3: flags
+    pub fn new(v: u32) -> ObjectAttributeMap {
+        // Verify if this is the right byte order
+        let (b0, b1, b2, b3) = (v as u8, (v >> 8) as u8, (v >> 16) as u8, (v >> 24) as u8);
+        ObjectAttributeMap {
+            y: b0,
+            x: b1,
+            tile_idx: b2,
+            priority: 0b1000_0000 & b3 != 0,
+            flip_y: 0b0100_0000 & b3 != 0,
+            flip_x: 0b0010_0000 & b3 != 0,
+            // use OBP0 (false) or OBP1 (true)
+            dmg_palette: 0b0001_0000 & b3 != 0,
+            bank: 0b0000_1000 & b3 != 0,
+            cgb_palette: 0b0000_0111 & b3,
+        }
+    }
 }
 
 /// There are two types of sprites that can be used, one that is 8 x 8 pixels
@@ -210,5 +266,19 @@ mod tests {
         assert_eq!(cpu.memory.read_byte(Register::LCDC as u16), 0xFF);
         disp.set_lcdc(&mut cpu, flags, false);
         assert_eq!(cpu.memory.read_byte(Register::LCDC as u16), 0);
+    }
+
+    #[test]
+    fn oam_test() {
+        let oam = ObjectAttributeMap::new(0xFFFFFFFF);
+        assert_eq!(oam.cgb_palette, 7);
+        assert_eq!(oam.x, 0xFF);
+        assert_eq!(oam.y, 0xFF);
+        assert_eq!(oam.tile_idx, 0xFF);
+        assert!(oam.bank);
+        assert!(oam.flip_x);
+        assert!(oam.flip_y);
+        assert!(oam.priority);
+        assert!(oam.dmg_palette);
     }
 }

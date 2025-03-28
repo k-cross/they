@@ -3,7 +3,7 @@
 use crate::motherboard::Motherboard;
 use eframe::egui;
 
-pub fn run(mb: Motherboard) -> eframe::Result {
+pub fn run(_mb: Motherboard) -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
@@ -11,7 +11,7 @@ pub fn run(mb: Motherboard) -> eframe::Result {
     eframe::run_native(
         "They: Gameboy Emulator",
         options,
-        Box::new(|cc| Ok(Box::<TheyApp>::default())),
+        Box::new(|_cc| Ok(Box::<TheyApp>::default())),
     )
 }
 
