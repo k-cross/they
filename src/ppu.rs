@@ -42,13 +42,23 @@ impl Display {
         }
     }
 
-    pub fn set_lcdc(&mut self, lcdc_val: u8, flags: Vec<LCDC>) -> u8 {
-        lcdc_val | flags.into_iter().fold(0u8, |acc, f| (acc | f as u8))
+    pub fn set_lcdc(&mut self, cpu: &mut CPU, flags: Vec<LCDC>, cond: bool) -> u8 {
+        if cond {
+            let v = cpu.memory.read_byte(Register::LCDC as u16)
+                | flags.into_iter().fold(0u8, |acc, f| (acc | f as u8));
+            cpu.memory.write_byte(Register::LCDC as u16, v);
+            v
+        } else {
+            let v = cpu.memory.read_byte(Register::LCDC as u16)
+                & !flags.into_iter().fold(0u8, |acc, f| (acc | f as u8));
+            cpu.memory.write_byte(Register::LCDC as u16, v);
+            v
+        }
     }
 
-    pub fn check_lcdc(&mut self, lcdc_val: &u8, flags: Vec<LCDC>) -> bool {
+    pub fn check_lcdc(&mut self, cpu: &mut CPU, flags: Vec<LCDC>) -> bool {
         let f = flags.into_iter().fold(0u8, |acc, f| (acc | f as u8));
-        lcdc_val & f == f
+        cpu.memory.read_byte(Register::LCDC as u16) & f == f
     }
 
     pub fn load_tiles(&mut self, cpu: &mut CPU, block: u8) {
@@ -85,6 +95,11 @@ impl Display {
             }
             self.tiles[i] = tile;
         }
+    }
+
+    /// Return the index of the desired tile.
+    pub fn get_tile(&mut self, cpu: &mut CPU) -> usize {
+        0
     }
 }
 
@@ -147,7 +162,7 @@ pub enum Register {
 /// OBJ size: 0 = 8×8; 1 = 8×16
 /// OBJ enable: 0 = Off; 1 = On
 /// BG & Window enable / priority [Different meaning in CGB Mode]: 0 = Off; 1 = On
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum LCDC {
     PPUEnabled = 0b1000_0000,
     WindowTileMapArea = 0b0100_0000,
@@ -175,5 +190,25 @@ mod tests {
         for tile in &disp.tiles[0..128] {
             assert_eq!(tile, &white_tile);
         }
+    }
+
+    #[test]
+    fn set_lcdc_test() {
+        let (mut cpu, mut disp) = setup();
+        let flags = vec![
+            LCDC::WindowTileMapArea,
+            LCDC::WindowEnabled,
+            LCDC::WindowDataArea,
+            LCDC::PPUEnabled,
+            LCDC::ObjSize,
+            LCDC::BgTileMapArea,
+            LCDC::BgWindowPriority,
+            LCDC::ObjEnabled,
+        ];
+        disp.set_lcdc(&mut cpu, flags.clone(), true);
+        assert!(disp.check_lcdc(&mut cpu, flags.clone()));
+        assert_eq!(cpu.memory.read_byte(Register::LCDC as u16), 0xFF);
+        disp.set_lcdc(&mut cpu, flags, false);
+        assert_eq!(cpu.memory.read_byte(Register::LCDC as u16), 0);
     }
 }
