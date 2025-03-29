@@ -21,7 +21,7 @@ impl System {
             cpu: CPU::new(),
             display: Display::new(false),
             sound: Voices::new(),
-            cartridge: Cartridge::new(boot_params.rom_path.as_str()),
+            cartridge: Cartridge::new(&boot_params.rom_path),
         }
     }
 }

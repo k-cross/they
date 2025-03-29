@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 pub mod cartridge;
 pub mod cpu;
 pub mod interface;
@@ -13,15 +15,20 @@ pub const PPU_HZ: u32 = 4_194_304;
 pub const VRAM_HZ: u32 = 2_097_152;
 
 pub struct BootParameters {
-    pub rom_path: String,
+    pub rom_path: PathBuf,
     // false 8x8, true 8x16
     pub sprite_size: bool,
 }
 
 impl BootParameters {
-    pub fn new() -> BootParameters {
+    pub fn new(p: Option<&str>) -> BootParameters {
+        let p = match p {
+            Some(v) => Path::new(v).to_path_buf(),
+            None => Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("rom_tests/blarggs-test-roms/cpu_instrs/cpu_instrs.gb"),
+        };
         BootParameters {
-            rom_path: "./rom_tests/blarggs-test-roms/cpu_instrs/cpu_instrs.gb".to_owned(),
+            rom_path: p,
             sprite_size: false,
         }
     }
