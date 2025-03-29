@@ -1,7 +1,9 @@
+use they::BootParameters;
 use they::interface::window;
-use they::motherboard::Motherboard;
+use they::system::System;
 
 fn main() {
-    let mb = Motherboard::new();
-    window::run(mb).ok();
+    let boot_params = BootParameters::new();
+    let system = System::new(boot_params);
+    window::run(system).ok();
 }

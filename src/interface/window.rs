@@ -1,9 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use crate::motherboard::Motherboard;
+use crate::system::System;
 use eframe::egui;
 
-pub fn run(_mb: Motherboard) -> eframe::Result {
+pub fn run(_mb: System) -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
