@@ -2,6 +2,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 
+/// The Cartridge's ROM gets stored in memory banks of 16Kb sizes each. The
+/// system contains two 16Kb banks so any game of 32Kb or smaller doesn't rely
+/// on banking. RAM gets banked in 8Kb chuncks and the system has a RAM size of
+/// 8Kb onboard already.
 #[derive(Debug, Clone)]
 pub struct Cartridge {
     // memory bank controller

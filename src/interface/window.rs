@@ -1,7 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use crate::system::System;
-use eframe::egui;
+use eframe::{
+    App, Frame,
+    egui::{self, CentralPanel, Context},
+};
+use egui_file::FileDialog;
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 pub fn run(_mb: System) -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -15,23 +23,36 @@ pub fn run(_mb: System) -> eframe::Result {
     )
 }
 
+#[derive(Default)]
 struct TheyApp {
     name: String,
     age: usize,
+    opened_file: Option<PathBuf>,
+    open_file_dialog: Option<FileDialog>,
 }
 
-impl Default for TheyApp {
-    fn default() -> Self {
-        Self {
-            name: "they".to_owned(),
-            age: 42,
-        }
-    }
-}
+impl App for TheyApp {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        CentralPanel::default().show(ctx, |ui| {
+            if (ui.button("Open")).clicked() {
+                // Show only files with the extension "txt".
+                let filter = Box::new({
+                    let ext = Some(OsStr::new("gb"));
+                    move |path: &Path| -> bool { path.extension() == ext }
+                });
+                let mut dialog =
+                    FileDialog::open_file(self.opened_file.clone()).show_files_filter(filter);
+                dialog.open();
+                self.open_file_dialog = Some(dialog);
+            }
 
-impl eframe::App for TheyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+            if let Some(dialog) = &mut self.open_file_dialog {
+                if dialog.show(ctx).selected() {
+                    if let Some(file) = dialog.path() {
+                        self.opened_file = Some(file.to_path_buf());
+                    }
+                }
+            }
             ui.heading("My egui Application");
             ui.horizontal(|ui| {
                 let name_label = ui.label("Your name: ");
