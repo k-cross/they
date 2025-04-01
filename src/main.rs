@@ -4,6 +4,8 @@ use they::system::System;
 
 fn main() {
     let boot_params = BootParameters::new(None);
-    let system = System::new(boot_params);
+    let mut system = System::new(boot_params);
+    system.initialize();
+    system.run();
     window::run(system).ok();
 }

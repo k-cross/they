@@ -1101,6 +1101,7 @@ pub(crate) fn write_reg(c: &mut CPU, r: &Reg, v: u8) {
 /// ticks_ (T-states). To convert M-cycles to T-states:
 ///   t_states = m_cycles * 4
 pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
+    println!("opcode: {}", opcode);
     match opcode {
         0x0 => 1,
         0x1 => ld_r16_n16(c, Reg::B, Reg::C),
