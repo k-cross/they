@@ -28,9 +28,9 @@ impl System {
     /// Starts the instruction loop.
     pub fn run(&mut self) {
         loop {
-            println!("{}", self.cpu.registers);
+            //println!("{}", self.cpu.registers);
             self.cpu.exec();
-            let c = self.cpu.memory.read_byte(0xFF02);
+            let c = self.cpu.memory.read_byte(0xFF01);
             print!("{}", c as char);
         }
     }

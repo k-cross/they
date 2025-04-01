@@ -1,4 +1,4 @@
-const RAM_SIZE: usize = 0xFFFF;
+const RAM_SIZE: usize = 0x10000;
 
 #[repr(u16)]
 pub enum MemoryRegisters {
@@ -104,7 +104,7 @@ impl Memory {
     }
 
     pub(crate) fn read_word(&mut self, addr: u16) -> u16 {
-        (self.read_byte(addr) as u16) << 8 | self.read_byte(addr + 1) as u16
+        self.read_byte(addr) as u16 | (self.read_byte(addr + 1) as u16) << 8
     }
 
     pub(crate) fn write_byte(&mut self, addr: u16, val: u8) {
@@ -113,8 +113,8 @@ impl Memory {
     }
 
     pub(crate) fn write_word(&mut self, addr: u16, val: u16) {
-        let v1: u8 = (val >> 8) as u8;
-        let v2: u8 = val as u8;
+        let v1: u8 = val as u8;
+        let v2: u8 = (val >> 8) as u8;
         self.write_byte(addr, v1);
         self.write_byte(addr + 1, v2);
     }

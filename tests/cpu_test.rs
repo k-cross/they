@@ -44,8 +44,8 @@ fn test_ld_r16_n16() {
     cpu.exec();
     assert_eq!(cpu.memory.ram[0x0], 0x1);
     assert_eq!(cpu.registers.pc, 0x3);
-    assert_eq!(cpu.registers.b, 0xFF);
-    assert_eq!(cpu.registers.c, 0xEE);
+    assert_eq!(cpu.registers.c, 0xFF);
+    assert_eq!(cpu.registers.b, 0xEE);
 }
 
 #[test]
@@ -160,8 +160,8 @@ fn test_ld_a16m_sp() {
     cpu.exec();
     assert_eq!(cpu.registers.pc, 0x3);
     assert_eq!(cpu.registers.sp, 0xAAFF);
-    assert_eq!(cpu.memory.ram[0x0], 0xAA);
-    assert_eq!(cpu.memory.ram[0x1], 0xFF);
+    assert_eq!(cpu.memory.ram[0x1], 0xAA);
+    assert_eq!(cpu.memory.ram[0x0], 0xFF);
 }
 
 #[test]
@@ -405,7 +405,7 @@ fn test_ld_sp_n16() {
     cpu.memory.ram[0x2] = 0xEE;
     cpu.exec();
     assert_eq!(cpu.registers.pc, 0x3);
-    assert_eq!(cpu.registers.sp, 0xFFEE);
+    assert_eq!(cpu.registers.sp, 0xEEFF);
 }
 
 #[test]
@@ -748,7 +748,7 @@ fn test_cp_r8_r16m() {
 fn test_ret_cc() {
     let mut cpu = setup(0xC0);
     cpu.registers.sp = 0x0100;
-    cpu.memory.ram[0x0100] = 0xA;
+    cpu.memory.ram[0x0101] = 0xA;
     cpu.exec();
     assert_eq!(cpu.registers.sp, 0x102);
     assert_eq!(cpu.registers.pc, 0xA00);
@@ -758,7 +758,7 @@ fn test_ret_cc() {
 fn test_pop_r16() {
     let mut cpu = setup(0xC1);
     cpu.registers.sp = 0x0100;
-    cpu.memory.ram[0x0100] = 0xA;
+    cpu.memory.ram[0x0101] = 0xA;
     cpu.exec();
     assert_eq!(cpu.registers.sp, 0x102);
     assert_eq!(cpu.registers.b, 0xA);
@@ -770,7 +770,7 @@ fn test_jp_a16_cc() {
     let mut cpu = setup(0xC2);
     cpu.memory.ram[0x01] = 0xA;
     cpu.exec();
-    assert_eq!(cpu.registers.pc, 0x0A00);
+    assert_eq!(cpu.registers.pc, 0xA);
 
     cpu.registers.pc = 0;
     cpu.set_flag(ALUFlag::Z, true);
@@ -818,9 +818,9 @@ fn test_call_a16_cc() {
     cpu.memory.ram[0x102] = 0xA;
     cpu.exec();
     assert_eq!(cpu.registers.sp, 0x100);
-    assert_eq!(cpu.registers.pc, 0xAA00);
-    assert_eq!(cpu.memory.ram[0x100], 0x0);
-    assert_eq!(cpu.memory.ram[0x101], 0x03);
+    assert_eq!(cpu.registers.pc, 0xAA);
+    assert_eq!(cpu.memory.ram[0x100], 0x03);
+    assert_eq!(cpu.memory.ram[0x101], 0x0);
 
     // test false condition
     cpu.registers.sp = 0x0102;
@@ -937,10 +937,10 @@ fn test_cp_r8_n8() {
 }
 
 #[test]
-fn test_reti_cc() {
+fn test_reti() {
     let mut cpu = setup(0xD9);
     cpu.registers.sp = 0x0100;
-    cpu.memory.ram[0x0100] = 0xA;
+    cpu.memory.ram[0x0101] = 0xA;
     cpu.ei = false;
     cpu.exec();
     assert_eq!(cpu.registers.sp, 0x102);
