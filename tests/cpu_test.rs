@@ -97,7 +97,7 @@ fn test_inc_r8() {
     cpu.registers.b = 0xFF;
     cpu.exec();
     assert_eq!(cpu.registers.b, 0x0);
-    assert_eq!(cpu.registers.flags, ALUFlag::C as u8);
+    assert!(cpu.check_flag(ALUFlag::Z));
 }
 
 #[test]

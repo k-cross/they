@@ -189,12 +189,12 @@ fn inc_r8(c: &mut CPU, r: Reg) -> u8 {
         Some(vv) => {
             write_reg(c, &r, vv);
             if (0b00001000 & v == 0) && (0b00001000 & vv != 0) {
-                c.registers.flags = ALUFlag::H as u8;
+                c.set_flag(ALUFlag::H, true);
             }
         }
         None => {
             write_reg(c, &r, 0);
-            c.registers.flags = ALUFlag::C as u8;
+            c.set_flag(ALUFlag::Z, true);
         }
     }
     1
@@ -324,30 +324,13 @@ fn rrc(c: &mut CPU, r: Reg) -> u8 {
 }
 
 fn rra(c: &mut CPU) -> u8 {
-    let _ = rr(c, Reg::A);
+    let v = c.registers.acc;
+    c.registers.acc = v >> 1 | if c.check_flag(ALUFlag::C) { 0x80 } else { 0 };
+    c.set_flag(ALUFlag::C, v & 0x01 == 0x01);
+    c.set_flag(ALUFlag::H, false);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::Z, false);
     1
-}
-
-fn rr(c: &mut CPU, r: Reg) -> u8 {
-    let v = read_reg(c, &r);
-    let carry = c.registers.flags & ALUFlag::C as u8 != 0;
-    if 0b0000_0001 & v == 0 {
-        if carry {
-            write_reg(c, &r, (v >> 1) | 0b1000_0000);
-        } else {
-            write_reg(c, &r, v >> 1);
-        }
-        c.registers.flags = 0;
-    } else {
-        if carry {
-            write_reg(c, &r, (v >> 1) | 0b1000_0000);
-            c.registers.flags = ALUFlag::C as u8;
-        } else {
-            write_reg(c, &r, v >> 1);
-            c.registers.flags = ALUFlag::C as u8;
-        }
-    }
-    2
 }
 
 fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
@@ -899,7 +882,7 @@ fn jr_z_e8(c: &mut CPU) -> u8 {
 }
 
 fn jr_nc_e8(c: &mut CPU) -> u8 {
-    if c.registers.flags & ALUFlag::C as u8 == 0 {
+    if !c.check_flag(ALUFlag::C) {
         let offset = c.get_instr() as i8;
         c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
         3
@@ -1101,7 +1084,7 @@ pub(crate) fn write_reg(c: &mut CPU, r: &Reg, v: u8) {
 /// ticks_ (T-states). To convert M-cycles to T-states:
 ///   t_states = m_cycles * 4
 pub(crate) fn operations(c: &mut CPU, opcode: u8) -> u8 {
-    println!("opcode: {}", opcode);
+    println!("opcode: {:2x}", opcode);
     match opcode {
         0x0 => 1,
         0x1 => ld_r16_n16(c, Reg::B, Reg::C),
