@@ -28,10 +28,10 @@ impl System {
     /// Starts the instruction loop.
     pub fn run(&mut self) {
         loop {
-            //println!("{}", self.cpu.registers);
+            print!("<< {} >> ", self.cpu.registers);
             self.cpu.exec();
-            let c = self.cpu.memory.read_byte(0xFF02);
-            print!(" -- Char: {}:{} -- ", c, c as char);
+            let character = self.cpu.memory.read_byte(0xFF01);
+            print!(" -- Char: {:2x} -- ", character);
         }
     }
 

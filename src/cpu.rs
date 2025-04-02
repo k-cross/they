@@ -148,13 +148,13 @@ impl CPU {
 
     pub fn get_instr(&mut self) -> u8 {
         let b = self.memory.read_byte(self.registers.pc);
-        self.registers.pc += 1;
+        self.registers.pc = self.registers.pc.wrapping_add(1);
         b
     }
 
     pub fn get_word_instr(&mut self) -> u16 {
         let w = self.memory.read_word(self.registers.pc);
-        self.registers.pc += 2;
+        self.registers.pc = self.registers.pc.wrapping_add(2);
         w
     }
 

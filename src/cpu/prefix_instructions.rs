@@ -6,7 +6,7 @@ fn rl_r8(c: &mut CPU, r: Reg) -> u8 {
     let rv = read_reg(c, &r);
     let v = (rv << 1) | if c.check_flag(ALUFlag::C) { 1 } else { 0 };
     write_reg(c, &r, v);
-    c.set_flag(ALUFlag::C, v & 0x80 == 0x80);
+    c.set_flag(ALUFlag::C, rv & 0x80 == 0x80);
     c.set_flag(ALUFlag::Z, v == 0);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::H, false);
@@ -19,7 +19,7 @@ fn rl_hlm(c: &mut CPU) -> u8 {
     let rv = c.memory.read_byte(addr);
     let v = (rv << 1) | if c.check_flag(ALUFlag::C) { 1 } else { 0 };
     c.memory.write_byte(addr, v);
-    c.set_flag(ALUFlag::C, v & 0x80 == 0x80);
+    c.set_flag(ALUFlag::C, rv & 0x80 == 0x80);
     c.set_flag(ALUFlag::Z, v == 0);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::H, false);
@@ -31,7 +31,7 @@ fn rr_r8(c: &mut CPU, r: Reg) -> u8 {
     let rv = read_reg(c, &r);
     let v = (rv >> 1) | if c.check_flag(ALUFlag::C) { 0x80 } else { 0 };
     write_reg(c, &r, v);
-    c.set_flag(ALUFlag::C, v & 0x01 == 0x01);
+    c.set_flag(ALUFlag::C, rv & 0x01 == 0x01);
     c.set_flag(ALUFlag::Z, v == 0);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::H, false);
@@ -44,7 +44,7 @@ fn rr_hlm(c: &mut CPU) -> u8 {
     let rv = c.memory.read_byte(addr);
     let v = (rv >> 1) | if c.check_flag(ALUFlag::C) { 0x80 } else { 0 };
     c.memory.write_byte(addr, v);
-    c.set_flag(ALUFlag::C, v & 0x01 == 0x01);
+    c.set_flag(ALUFlag::C, rv & 0x01 == 0x01);
     c.set_flag(ALUFlag::Z, v == 0);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::H, false);

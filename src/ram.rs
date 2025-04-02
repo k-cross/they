@@ -66,11 +66,15 @@ pub enum MemoryRegisters {
 #[derive(Debug)]
 pub struct Memory {
     pub ram: [u8; RAM_SIZE],
+    serial_out: Vec<u8>,
 }
 
 impl Memory {
     pub fn new() -> Memory {
-        let mut m = Memory { ram: [0; RAM_SIZE] };
+        let mut m = Memory {
+            serial_out: Vec::new(),
+            ram: [0; RAM_SIZE],
+        };
         m.initialize();
         m
     }
@@ -109,7 +113,15 @@ impl Memory {
 
     pub(crate) fn write_byte(&mut self, addr: u16, val: u8) {
         //TODO: match on ranges for memory protection
+        match addr {
+            0xFF01 => self.serial_out.push(val),
+            _ => (),
+        }
         self.ram[addr as usize] = val;
+    }
+
+    pub(crate) fn print_serial(&mut self) {
+        println!("{}", String::from_utf8_lossy(&self.serial_out));
     }
 
     pub(crate) fn write_word(&mut self, addr: u16, val: u16) {

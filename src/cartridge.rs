@@ -126,7 +126,9 @@ mod tests {
     use super::*;
 
     fn setup() -> Cartridge {
-        let bp = BootParameters::new(None);
+        let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("rom_tests/blarggs-test-roms/cpu_instrs/cpu_instrs.gb");
+        let bp = BootParameters::new(p.to_str());
         Cartridge::new(&bp.rom_path)
     }
 

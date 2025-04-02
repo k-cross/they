@@ -53,6 +53,15 @@ fn test_rr_r8() {
     assert!(!cpu.check_flag(ALUFlag::Z));
     assert!(!cpu.check_flag(ALUFlag::H));
     assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+
+    cpu.registers.pc = 0;
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0x0);
+    assert_eq!(cpu.registers.pc, 0x2);
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::H));
+    assert!(!cpu.check_flag(ALUFlag::N));
     assert!(cpu.check_flag(ALUFlag::C));
 }
 

@@ -23,6 +23,8 @@ fn ld_r8_n8(c: &mut CPU, r: Reg) -> u8 {
 fn ld_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r2);
     write_reg(c, &r1, v);
+    //std::thread::sleep(std::time::Duration::from_millis(10));
+    //c.memory.print_serial();
     1
 }
 
@@ -838,17 +840,20 @@ fn stop_n8(c: &mut CPU) -> u8 {
 
 fn jr_e8(c: &mut CPU) -> u8 {
     let offset = c.get_instr() as i8;
-    c.registers.pc = ((c.registers.pc as i32) + (offset as i32)) as u16;
+    // convert to u32 to expand the bit range before converting to i32, so sign is not affected
+    c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
+    c.memory.print_serial();
+    std::thread::sleep(std::time::Duration::from_millis(100));
     3
 }
 
 fn jr_nz_e8(c: &mut CPU) -> u8 {
     if c.registers.flags & ALUFlag::Z as u8 == 0 {
         let offset = c.get_instr() as i8;
-        c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
+        c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
         3
     } else {
-        c.registers.pc += 1;
+        c.registers.pc = c.registers.pc.wrapping_add(1);
         2
     }
 }
@@ -856,10 +861,10 @@ fn jr_nz_e8(c: &mut CPU) -> u8 {
 fn jr_z_e8(c: &mut CPU) -> u8 {
     if c.check_flag(ALUFlag::Z) {
         let offset = c.get_instr() as i8;
-        c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
+        c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
         3
     } else {
-        c.registers.pc += 1;
+        c.registers.pc = c.registers.pc.wrapping_add(1);
         2
     }
 }
@@ -867,10 +872,10 @@ fn jr_z_e8(c: &mut CPU) -> u8 {
 fn jr_nc_e8(c: &mut CPU) -> u8 {
     if !c.check_flag(ALUFlag::C) {
         let offset = c.get_instr() as i8;
-        c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
+        c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
         3
     } else {
-        c.registers.pc += 1;
+        c.registers.pc = c.registers.pc.wrapping_add(1);
         2
     }
 }
@@ -878,10 +883,10 @@ fn jr_nc_e8(c: &mut CPU) -> u8 {
 fn jr_c_e8(c: &mut CPU) -> u8 {
     if c.check_flag(ALUFlag::C) {
         let offset = c.get_instr() as i8;
-        c.registers.pc = ((c.registers.pc as i32) + offset as i32) as u16;
+        c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
         3
     } else {
-        c.registers.pc += 1;
+        c.registers.pc = c.registers.pc.wrapping_add(1);
         2
     }
 }
@@ -969,7 +974,7 @@ fn jp_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
         c.registers.pc = c.get_word_instr();
         4
     } else {
-        c.registers.pc += 2;
+        c.registers.pc = c.registers.pc.wrapping_add(2);
         3
     }
 }
