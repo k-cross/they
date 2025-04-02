@@ -90,7 +90,10 @@ fn test_inc_r8() {
     assert_eq!(cpu.memory.ram[0x0], 0x4);
     assert_eq!(cpu.registers.pc, 0x1);
     assert_eq!(cpu.registers.b, 0x3);
-    assert_eq!(cpu.registers.flags, 0x0);
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
 
     // check flags on overflow
     cpu.registers.pc = 0;
@@ -98,6 +101,9 @@ fn test_inc_r8() {
     cpu.exec();
     assert_eq!(cpu.registers.b, 0x0);
     assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
 }
 
 #[test]

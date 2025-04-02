@@ -185,18 +185,11 @@ fn inc_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
 fn inc_r8(c: &mut CPU, r: Reg) -> u8 {
     // cycles 1
     let v = read_reg(c, &r);
-    match v.checked_add(1) {
-        Some(vv) => {
-            write_reg(c, &r, vv);
-            if (0b00001000 & v == 0) && (0b00001000 & vv != 0) {
-                c.set_flag(ALUFlag::H, true);
-            }
-        }
-        None => {
-            write_reg(c, &r, 0);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
+    let vv = v.wrapping_add(1);
+    write_reg(c, &r, vv);
+    c.set_flag(ALUFlag::Z, vv == 0);
+    c.set_flag(ALUFlag::H, (0x18 & v == 0x08) && (0x10 & vv != 0));
+    c.set_flag(ALUFlag::N, false);
     1
 }
 
