@@ -232,21 +232,11 @@ fn inc_r16m(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
 
 fn dec_r8(c: &mut CPU, r: Reg) -> u8 {
     let v = read_reg(c, &r);
-    match v.checked_sub(1) {
-        Some(vv) => {
-            write_reg(c, &r, vv);
-            if (0b00001000 & v == 0) && (0b00001000 & vv != 0) {
-                c.registers.flags = ALUFlag::H as u8 | ALUFlag::N as u8;
-            }
-            if vv == 0 {
-                c.registers.flags = c.registers.flags | ALUFlag::Z as u8;
-            }
-        }
-        None => {
-            write_reg(c, &r, 0);
-            c.registers.flags = ALUFlag::C as u8 | ALUFlag::N as u8;
-        }
-    }
+    let vv = v.wrapping_sub(1);
+    write_reg(c, &r, vv);
+    c.set_flag(ALUFlag::Z, vv == 0);
+    c.set_flag(ALUFlag::H, (0x18 & v == 0x10) && (0x08 & vv != 0));
+    c.set_flag(ALUFlag::N, true);
     1
 }
 

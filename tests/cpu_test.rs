@@ -104,18 +104,24 @@ fn test_inc_r8() {
 fn test_dec_r8() {
     // specific opcode for register b
     let mut cpu = setup(0x5);
+    cpu.registers.b = 1;
     cpu.exec();
-    assert_eq!(cpu.memory.ram[0x0], 0x5);
     assert_eq!(cpu.registers.pc, 0x1);
-    assert_eq!(cpu.registers.b, 0x1);
-    assert_eq!(cpu.registers.flags, 0x0);
+    assert_eq!(cpu.registers.b, 0x0);
+    assert!(cpu.check_flag(ALUFlag::N));
+    assert!(cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
 
     // check flags on overflow
     cpu.registers.pc = 0;
     cpu.registers.b = 0x0;
     cpu.exec();
-    assert_eq!(cpu.registers.b, 0x0);
-    assert_eq!(cpu.registers.flags, (ALUFlag::C as u8 | ALUFlag::N as u8));
+    assert_eq!(cpu.registers.b, 0xFF);
+    assert!(cpu.check_flag(ALUFlag::N));
+    assert!(!cpu.check_flag(ALUFlag::Z));
+    assert!(!cpu.check_flag(ALUFlag::C));
+    assert!(!cpu.check_flag(ALUFlag::H));
 }
 
 #[test]
