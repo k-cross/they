@@ -773,8 +773,8 @@ fn test_pop_r16() {
     cpu.memory.ram[0x0101] = 0xA;
     cpu.exec();
     assert_eq!(cpu.registers.sp, 0x102);
-    assert_eq!(cpu.registers.b, 0xA);
-    assert_eq!(cpu.registers.c, 0x0);
+    assert_eq!(cpu.registers.b, 0x0);
+    assert_eq!(cpu.registers.c, 0xA);
 }
 
 #[test]

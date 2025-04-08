@@ -843,7 +843,7 @@ fn jr_e8(c: &mut CPU) -> u8 {
     // convert to u32 to expand the bit range before converting to i32, so sign is not affected
     c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
     c.memory.print_serial();
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    //std::thread::sleep(std::time::Duration::from_millis(100));
     3
 }
 
@@ -980,7 +980,7 @@ fn jp_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
 }
 
 fn call_a16(c: &mut CPU) -> u8 {
-    c.registers.sp -= 2;
+    c.registers.sp = c.registers.sp.wrapping_sub(2);
     c.memory.write_word(c.registers.sp, c.registers.pc + 2);
     c.registers.pc = c.get_word_instr();
     6
@@ -988,7 +988,7 @@ fn call_a16(c: &mut CPU) -> u8 {
 
 fn call_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
     if c.check_flag(flag) == set {
-        c.registers.sp -= 2;
+        c.registers.sp = c.registers.sp.wrapping_sub(2);
         c.memory.write_word(c.registers.sp, c.registers.pc + 2);
         c.registers.pc = c.get_word_instr();
         6
@@ -999,21 +999,21 @@ fn call_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
 
 fn pop_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = c.memory.read_word(c.registers.sp);
-    write_reg(c, &r1, (v >> 8) as u8);
-    write_reg(c, &r2, v as u8);
-    c.registers.sp += 2;
+    write_reg(c, &r2, (v >> 8) as u8);
+    write_reg(c, &r1, v as u8);
+    c.registers.sp = c.registers.sp.wrapping_add(2);
     3
 }
 
 fn push_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
-    c.registers.sp -= 2;
-    let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    c.registers.sp = c.registers.sp.wrapping_sub(2);
+    let v = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r1) as u16;
     c.memory.write_word(c.registers.sp, v);
     4
 }
 
 fn rst(c: &mut CPU, val: u16) -> u8 {
-    c.registers.sp -= 2;
+    c.registers.sp = c.registers.sp.wrapping_sub(2);
     c.memory.write_word(c.registers.sp, c.registers.pc);
     c.registers.pc = val;
     4
