@@ -999,15 +999,15 @@ fn call_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
 
 fn pop_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = c.memory.read_word(c.registers.sp);
-    write_reg(c, &r2, (v >> 8) as u8);
-    write_reg(c, &r1, v as u8);
-    c.registers.sp = c.registers.sp.wrapping_add(2);
+    write_reg(c, &r1, (v >> 8) as u8);
+    write_reg(c, &r2, v as u8);
+    c.registers.sp += 2;
     3
 }
 
 fn push_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
-    c.registers.sp = c.registers.sp.wrapping_sub(2);
-    let v = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r1) as u16;
+    c.registers.sp -= 2;
+    let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
     c.memory.write_word(c.registers.sp, v);
     4
 }
