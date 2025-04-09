@@ -23,8 +23,8 @@ fn ld_r8_n8(c: &mut CPU, r: Reg) -> u8 {
 fn ld_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r2);
     write_reg(c, &r1, v);
-    //std::thread::sleep(std::time::Duration::from_millis(10));
-    //c.memory.print_serial();
+    //std::thread::sleep(std::time::Duration::from_millis(1));
+    c.memory.print_serial();
     1
 }
 
@@ -37,8 +37,8 @@ fn ld_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
 
 fn ld_r16m_n8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = c.get_instr();
-    let addr = (read_reg(c, &r1) as usize) << 8 | read_reg(c, &r2) as usize;
-    c.memory.ram[addr] = v;
+    let addr = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    c.memory.write_byte(addr, v);
     2
 }
 
@@ -980,7 +980,7 @@ fn jp_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
 }
 
 fn call_a16(c: &mut CPU) -> u8 {
-    c.registers.sp = c.registers.sp.wrapping_sub(2);
+    c.registers.sp -= 2;
     c.memory.write_word(c.registers.sp, c.registers.pc + 2);
     c.registers.pc = c.get_word_instr();
     6
@@ -988,7 +988,7 @@ fn call_a16(c: &mut CPU) -> u8 {
 
 fn call_a16_cc(c: &mut CPU, flag: ALUFlag, set: bool) -> u8 {
     if c.check_flag(flag) == set {
-        c.registers.sp = c.registers.sp.wrapping_sub(2);
+        c.registers.sp -= 2;
         c.memory.write_word(c.registers.sp, c.registers.pc + 2);
         c.registers.pc = c.get_word_instr();
         6

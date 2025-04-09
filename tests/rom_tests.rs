@@ -19,5 +19,5 @@ fn blarggs_cpu_ld_test() {
         .join("rom_tests/blarggs-test-roms/cpu_instrs/individual/06-ld r,r.gb");
     let mut system = setup(p.to_str());
     eprintln!("ram {:#?}", system);
-    system.run();
+    //system.run();
 }

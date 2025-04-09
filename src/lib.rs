@@ -25,7 +25,10 @@ impl BootParameters {
         let p = match p {
             Some(v) => Path::new(v).to_path_buf(),
             None => Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("rom_tests/blarggs-test-roms/cpu_instrs/individual/06-ld r,r.gb"),
+                .join("rom_tests/blarggs-test-roms/cpu_instrs/individual/01-special.gb"),
+            //.join("rom_tests/blarggs-test-roms/cpu_instrs/individual/06-ld r,r.gb"),
+            //.join("rom_tests/blarggs-test-roms/cpu_instrs/individual/04-op r,imm.gb"),
+            //.join("rom_tests/blarggs-test-roms/cpu_instrs/individual/10-bit ops.gb"),
         };
         BootParameters {
             rom_path: p,
