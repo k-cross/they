@@ -248,64 +248,38 @@ fn dec_sp(c: &mut CPU) -> u8 {
 }
 
 fn rlca(c: &mut CPU) -> u8 {
-    let _ = rlc(c, Reg::A);
+    let rv = c.registers.acc;
+    let carry = rv & 0x80 == 0x80;
+    let v = (rv << 1) | if carry { 1 } else { 0 };
+    c.registers.acc = v;
+    c.set_flag(ALUFlag::C, carry);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
     1
-}
-
-fn rlc(c: &mut CPU, r: Reg) -> u8 {
-    let v = read_reg(c, &r);
-    if 0b1000000 & v == 0 {
-        write_reg(c, &r, v << 1);
-        c.registers.flags = 0;
-    } else {
-        write_reg(c, &r, v << 1);
-        c.registers.flags = ALUFlag::C as u8;
-    }
-    2
 }
 
 fn rla(c: &mut CPU) -> u8 {
-    let _ = rl(c, Reg::A);
+    let rv = c.registers.acc;
+    let v = (rv << 1) | if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    c.registers.acc = v;
+    c.set_flag(ALUFlag::C, rv & 0x80 == 0x80);
+    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
     1
-}
-
-fn rl(c: &mut CPU, r: Reg) -> u8 {
-    let v = read_reg(c, &r);
-    let carry = c.registers.flags & ALUFlag::C as u8 != 0;
-    if 0b1000000 & v == 0 {
-        if carry {
-            write_reg(c, &r, (v << 1) | 0b1);
-        } else {
-            write_reg(c, &r, v << 1);
-        }
-        c.registers.flags = 0;
-    } else {
-        if carry {
-            write_reg(c, &r, (v << 1) | 0b1);
-            c.registers.flags = ALUFlag::C as u8;
-        } else {
-            write_reg(c, &r, v << 1);
-            c.registers.flags = ALUFlag::C as u8;
-        }
-    }
-    2
 }
 
 fn rrca(c: &mut CPU) -> u8 {
-    let _ = rrc(c, Reg::A);
+    let rv = c.registers.acc;
+    let carry = rv & 1 == 1;
+    let v = rv >> 1 | if carry { 0x80 } else { 0 };
+    c.registers.acc = v;
+    c.set_flag(ALUFlag::C, carry);
+    c.set_flag(ALUFlag::Z, false);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::H, false);
     1
-}
-
-fn rrc(c: &mut CPU, r: Reg) -> u8 {
-    let v = read_reg(c, &r);
-    if 0b01 & v == 0 {
-        write_reg(c, &r, v >> 1);
-        c.registers.flags = 0;
-    } else {
-        write_reg(c, &r, v >> 1);
-        c.registers.flags = ALUFlag::C as u8;
-    }
-    2
 }
 
 fn rra(c: &mut CPU) -> u8 {
@@ -321,20 +295,24 @@ fn rra(c: &mut CPU) -> u8 {
 fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let hl = (c.registers.high as u16) << 8 | c.registers.low as u16;
     let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    let overflow_result = v.wrapping_add(hl);
     match v.checked_add(hl) {
         Some(vv) => {
-            if (0b00001000_00000000 & hl == 0) && (0b00001000_00000000 & vv != 0) {
-                c.registers.flags = ALUFlag::H as u8;
-            }
+            c.set_flag(ALUFlag::H, (0x0800 & hl == 0) && (0x0800 & vv != 0));
             c.registers.high = (vv >> 8) as u8;
             c.registers.low = vv as u8;
         }
         None => {
-            c.registers.high = 0;
-            c.registers.low = 0;
-            c.registers.flags = ALUFlag::C as u8;
+            c.registers.high = (overflow_result >> 8) as u8;
+            c.registers.low = overflow_result as u8;
+            c.set_flag(
+                ALUFlag::H,
+                (0x0800 & hl == 0) && (0x0800 & overflow_result != 0),
+            );
+            c.set_flag(ALUFlag::C, true);
         }
     }
+    c.set_flag(ALUFlag::N, false);
     2
 }
 

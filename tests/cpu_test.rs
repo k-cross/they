@@ -236,11 +236,11 @@ fn test_rrca() {
 
     // with flags
     cpu.registers.pc = 0;
-    cpu.registers.acc = 0xFF;
+    cpu.registers.acc = 0x0F;
     cpu.exec();
     assert_eq!(cpu.registers.pc, 0x1);
-    assert_eq!(cpu.registers.acc, 0b0111_1111);
-    assert_eq!(cpu.registers.flags, ALUFlag::C as u8);
+    assert_eq!(cpu.registers.acc, 0x87);
+    assert!(cpu.check_flag(ALUFlag::C));
 }
 
 #[test]
