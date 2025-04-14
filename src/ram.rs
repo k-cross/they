@@ -90,7 +90,8 @@ impl Memory {
         self.write_byte(MemoryRegisters::NR30 as u16, 0x7F);
         self.write_byte(MemoryRegisters::NR31 as u16, 0xFF);
         self.write_byte(MemoryRegisters::NR32 as u16, 0x9F);
-        self.write_byte(MemoryRegisters::NR34 as u16, 0xFF);
+        self.write_byte(MemoryRegisters::NR33 as u16, 0xFF);
+        self.write_byte(MemoryRegisters::NR34 as u16, 0xBF);
         self.write_byte(MemoryRegisters::NR41 as u16, 0xFF);
         self.write_byte(MemoryRegisters::NR44 as u16, 0xBF);
         self.write_byte(MemoryRegisters::NR50 as u16, 0x77);
@@ -100,6 +101,10 @@ impl Memory {
         self.write_byte(MemoryRegisters::BGP as u16, 0xFC);
         self.write_byte(MemoryRegisters::OBP0 as u16, 0xFF);
         self.write_byte(MemoryRegisters::OBP1 as u16, 0xFF);
+        self.write_byte(MemoryRegisters::JOYP as u16, 0xCF);
+        self.write_byte(MemoryRegisters::DIV as u16, 0x18);
+        self.write_byte(MemoryRegisters::TAC as u16, 0xF8);
+        self.write_byte(MemoryRegisters::IF as u16, 0xE1);
     }
 
     pub(crate) fn read_byte(&mut self, addr: u16) -> u8 {

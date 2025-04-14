@@ -264,7 +264,7 @@ fn rla(c: &mut CPU) -> u8 {
     let v = (rv << 1) | if c.check_flag(ALUFlag::C) { 1 } else { 0 };
     c.registers.acc = v;
     c.set_flag(ALUFlag::C, rv & 0x80 == 0x80);
-    c.set_flag(ALUFlag::Z, v == 0);
+    c.set_flag(ALUFlag::Z, false);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::H, false);
     1
@@ -292,27 +292,54 @@ fn rra(c: &mut CPU) -> u8 {
     1
 }
 
-fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
-    let hl = (c.registers.high as u16) << 8 | c.registers.low as u16;
-    let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
-    let overflow_result = v.wrapping_add(hl);
-    match v.checked_add(hl) {
-        Some(vv) => {
-            c.set_flag(ALUFlag::H, (0x0800 & hl == 0) && (0x0800 & vv != 0));
-            c.registers.high = (vv >> 8) as u8;
-            c.registers.low = vv as u8;
+/// Generically do the ALU add operation for 8 bit values and set the proper
+/// flags
+fn add_u8(c: &mut CPU, v1: u8, v2: u8) -> u8 {
+    let overflow_result = v1.wrapping_add(v2);
+    match v1.checked_add(v2) {
+        Some(_) => {
+            c.set_flag(ALUFlag::C, false);
         }
         None => {
-            c.registers.high = (overflow_result >> 8) as u8;
-            c.registers.low = overflow_result as u8;
-            c.set_flag(
-                ALUFlag::H,
-                (0x0800 & hl == 0) && (0x0800 & overflow_result != 0),
-            );
             c.set_flag(ALUFlag::C, true);
         }
     }
+    c.set_flag(
+        ALUFlag::H,
+        (0x08 & v1 == 0) && (0x08 & overflow_result != 0),
+    );
     c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::Z, overflow_result == 0);
+    overflow_result
+}
+
+/// Generically do the ALU add operation for 16 bit values and set the proper
+/// flags
+fn add_u16(c: &mut CPU, v1: u16, v2: u16) -> u16 {
+    let overflow_result = v1.wrapping_add(v2);
+    match v1.checked_add(v2) {
+        Some(_) => {
+            c.set_flag(ALUFlag::C, false);
+        }
+        None => {
+            c.set_flag(ALUFlag::C, true);
+        }
+    }
+    c.set_flag(
+        ALUFlag::H,
+        (0x0800 & v1 == 0) && (0x0800 & overflow_result != 0),
+    );
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::Z, overflow_result == 0);
+    overflow_result
+}
+
+fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
+    let hl = (c.registers.high as u16) << 8 | c.registers.low as u16;
+    let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
+    let result = add_u16(c, hl, v);
+    c.registers.high = (result >> 8) as u8;
+    c.registers.low = result as u8;
     2
 }
 
@@ -320,22 +347,23 @@ fn adc_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = read_reg(c, &r2);
     let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    let overflow_result = v.wrapping_add(v2 + carry);
     match v.checked_add(v2 + carry) {
         Some(vv) => {
             c.set_flag(
                 ALUFlag::H,
                 (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
             );
-            c.set_flag(ALUFlag::Z, vv == 0);
             c.set_flag(ALUFlag::C, false);
             write_reg(c, &r1, vv);
         }
         None => {
-            write_reg(c, &r1, 0);
+            write_reg(c, &r1, overflow_result);
             c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
+            c.set_flag(ALUFlag::H, false);
         }
     }
+    c.set_flag(ALUFlag::Z, overflow_result == 0);
     c.set_flag(ALUFlag::N, false);
     1
 }
@@ -344,22 +372,23 @@ fn adc_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = c.get_instr();
     let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    let overflow_result = v.wrapping_add(v2 + carry);
     match v.checked_add(v2 + carry) {
         Some(vv) => {
             c.set_flag(
                 ALUFlag::H,
                 (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
             );
-            c.set_flag(ALUFlag::Z, vv == 0);
             c.set_flag(ALUFlag::C, false);
             write_reg(c, &r1, vv);
         }
         None => {
-            write_reg(c, &r1, 0);
+            write_reg(c, &r1, overflow_result);
             c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
+            c.set_flag(ALUFlag::H, false);
         }
     }
+    c.set_flag(ALUFlag::Z, overflow_result == 0);
     c.set_flag(ALUFlag::N, false);
     2
 }
@@ -367,45 +396,16 @@ fn adc_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
 fn add_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = read_reg(c, &r2);
-    match v.checked_add(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, false);
+    let result = add_u8(c, v, v2);
+    write_reg(c, &r1, result);
     1
 }
 
 fn add_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = c.get_instr();
-    match v.checked_add(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, false);
+    let result = add_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
@@ -413,22 +413,8 @@ fn add_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
     let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
     let v = read_reg(c, &r1);
     let v2 = c.memory.read_byte(addr);
-    match v.checked_add(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, false);
+    let result = add_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
@@ -460,33 +446,17 @@ fn adc_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
 fn add_r16_sp(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let sp = c.registers.sp;
     let v = (read_reg(c, &r1) as u16) << 8 | read_reg(c, &r2) as u16;
-    match v.checked_add(sp) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b00010000_00000000 & v == 0) && (0b00010000_00000000 & vv != 0),
-            );
-            write_reg(c, &r1, (vv >> 8) as u8);
-            write_reg(c, &r2, vv as u8);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            write_reg(c, &r2, 0);
-            c.set_flag(ALUFlag::C, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, false);
+    let result = add_u16(c, v, sp);
+    c.registers.high = (result >> 8) as u8;
+    c.registers.low = result as u8;
     2
 }
 
 fn add_sp_e8(c: &mut CPU) -> u8 {
     let a = c.registers.sp;
     let b = c.get_instr() as i8 as i16 as u16;
-    c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::Z, false);
-    c.set_flag(ALUFlag::H, (a & 0x000F) + (b & 0x000F) > 0x000F);
-    c.set_flag(ALUFlag::C, (a & 0x00FF) + (b & 0x00FF) > 0x00FF);
-    c.registers.sp = a.wrapping_add(b);
+    c.registers.sp = add_u16(c, a, b);
     4
 }
 
@@ -807,6 +777,8 @@ fn cp_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
 
 fn scf(c: &mut CPU) -> u8 {
     c.set_flag(ALUFlag::C, true);
+    c.set_flag(ALUFlag::H, false);
+    c.set_flag(ALUFlag::N, false);
     1
 }
 
@@ -821,7 +793,7 @@ fn jr_e8(c: &mut CPU) -> u8 {
     // convert to u32 to expand the bit range before converting to i32, so sign is not affected
     c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
     c.memory.print_serial();
-    //std::thread::sleep(std::time::Duration::from_millis(100));
+    std::thread::sleep(std::time::Duration::from_millis(100));
     3
 }
 
@@ -885,7 +857,6 @@ fn daa(c: &mut CPU) -> u8 {
             adjust |= 0x60;
         };
         acc = acc.wrapping_add(adjust);
-        c.set_flag(ALUFlag::N, false);
     } else {
         acc = acc.wrapping_sub(adjust);
     }
