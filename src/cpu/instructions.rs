@@ -297,17 +297,10 @@ fn rra(c: &mut CPU) -> u8 {
 fn add_u8(c: &mut CPU, v1: u8, v2: u8) -> u8 {
     let overflow_result = v1.wrapping_add(v2);
     match v1.checked_add(v2) {
-        Some(_) => {
-            c.set_flag(ALUFlag::C, false);
-        }
-        None => {
-            c.set_flag(ALUFlag::C, true);
-        }
+        Some(_) => c.set_flag(ALUFlag::C, false),
+        None => c.set_flag(ALUFlag::C, true),
     }
-    c.set_flag(
-        ALUFlag::H,
-        (0x08 & v1 == 0) && (0x08 & overflow_result != 0),
-    );
+    c.set_flag(ALUFlag::H, (0x0F & v1) + (0x0F & v2) > 0x0F);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::Z, overflow_result == 0);
     overflow_result
@@ -318,20 +311,69 @@ fn add_u8(c: &mut CPU, v1: u8, v2: u8) -> u8 {
 fn add_u16(c: &mut CPU, v1: u16, v2: u16) -> u16 {
     let overflow_result = v1.wrapping_add(v2);
     match v1.checked_add(v2) {
-        Some(_) => {
-            c.set_flag(ALUFlag::C, false);
-        }
-        None => {
-            c.set_flag(ALUFlag::C, true);
-        }
+        Some(_) => c.set_flag(ALUFlag::C, false),
+        None => c.set_flag(ALUFlag::C, true),
     }
-    c.set_flag(
-        ALUFlag::H,
-        (0x0800 & v1 == 0) && (0x0800 & overflow_result != 0),
-    );
+    c.set_flag(ALUFlag::H, (0x00FF & v1) + (0x00FF & v2) > 0x00FF);
     c.set_flag(ALUFlag::N, false);
     c.set_flag(ALUFlag::Z, overflow_result == 0);
     overflow_result
+}
+
+/// Generically do the ALU adc operation for 8 bit values and set the proper
+/// flags
+fn adc_u8(c: &mut CPU, v1: u8, v2: u8) -> u8 {
+    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    let overflow_result = v1.wrapping_add(v2).wrapping_add(carry);
+    match v1.checked_add(v2).and_then(|res| res.checked_add(carry)) {
+        Some(_) => c.set_flag(ALUFlag::C, false),
+        None => c.set_flag(ALUFlag::C, true),
+    }
+    c.set_flag(ALUFlag::H, (0x0F & v1) + (0x0F & v2) + carry > 0x0F);
+    c.set_flag(ALUFlag::N, false);
+    c.set_flag(ALUFlag::Z, overflow_result == 0);
+    overflow_result
+}
+
+/// Generically do the ALU sub operation for 8 bit values and set the proper
+/// flags
+fn sub_u8(c: &mut CPU, v1: u8, v2: u8) -> u8 {
+    let result = v1.wrapping_sub(v2);
+    c.set_flag(ALUFlag::C, v2 > v1);
+    c.set_flag(
+        ALUFlag::H,
+        ((0xF0 & v1).wrapping_sub(0xF0 & v2) ^ 0x0F) < 0x0F,
+    );
+    c.set_flag(ALUFlag::Z, result == 0);
+    c.set_flag(ALUFlag::N, true);
+    result
+}
+
+/// Generically do the ALU sbc operation for 8 bit values and set the proper
+/// flags
+fn sbc_u8(c: &mut CPU, v1: u8, v2: u8) -> u8 {
+    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
+    let result = v1.wrapping_sub(v2).wrapping_sub(carry);
+    c.set_flag(ALUFlag::C, (v2 + carry) > v1);
+    c.set_flag(
+        ALUFlag::H,
+        ((0xF0 & v1).wrapping_sub(0xF0 & v2).wrapping_sub(carry) ^ 0x0F) < 0x0F,
+    );
+    c.set_flag(ALUFlag::Z, result == 0);
+    c.set_flag(ALUFlag::N, true);
+    result
+}
+
+/// Only sets flags, no return value needed
+fn cp_u8(c: &mut CPU, v1: u8, v2: u8) {
+    let result = v1.wrapping_sub(v2);
+    c.set_flag(ALUFlag::C, v2 > v1);
+    c.set_flag(
+        ALUFlag::H,
+        (0xF0 & v1).wrapping_sub(0xF0 & v2) ^ 0x0F < 0x0F,
+    );
+    c.set_flag(ALUFlag::Z, result == 0);
+    c.set_flag(ALUFlag::N, true);
 }
 
 fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
@@ -346,50 +388,16 @@ fn add_hl_r16(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
 fn adc_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = read_reg(c, &r2);
-    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
-    let overflow_result = v.wrapping_add(v2 + carry);
-    match v.checked_add(v2 + carry) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
-            );
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, overflow_result);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::H, false);
-        }
-    }
-    c.set_flag(ALUFlag::Z, overflow_result == 0);
-    c.set_flag(ALUFlag::N, false);
+    let result = adc_u8(c, v, v2);
+    write_reg(c, &r1, result);
     1
 }
 
 fn adc_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = c.get_instr();
-    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
-    let overflow_result = v.wrapping_add(v2 + carry);
-    match v.checked_add(v2 + carry) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
-            );
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, overflow_result);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::H, false);
-        }
-    }
-    c.set_flag(ALUFlag::Z, overflow_result == 0);
-    c.set_flag(ALUFlag::N, false);
+    let result = adc_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
@@ -422,24 +430,8 @@ fn adc_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
     let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
     let v = read_reg(c, &r1);
     let v2 = c.memory.read_byte(addr);
-    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
-    match v.checked_add(v2 + carry) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0000_1000 & v != 0) && (0b0000_1000 & vv == 0) && (0b0001_0000 & vv != 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            write_reg(c, &r1, vv);
-            c.set_flag(ALUFlag::C, false);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, false);
+    let result = adc_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
@@ -455,101 +447,40 @@ fn add_r16_sp(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
 fn add_sp_e8(c: &mut CPU) -> u8 {
     let a = c.registers.sp;
     let b = c.get_instr() as i8 as i16 as u16;
-    c.set_flag(ALUFlag::Z, false);
     c.registers.sp = add_u16(c, a, b);
+    c.set_flag(ALUFlag::Z, false);
     4
 }
 
 fn sub_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = read_reg(c, &r2);
-    match v.checked_sub(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    let result = sub_u8(c, v, v2);
+    write_reg(c, &r1, result);
     1
 }
 
 fn sub_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = c.get_instr();
-    match v.checked_sub(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    let result = sub_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
 fn sbc_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = read_reg(c, &r2);
-    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
-    match v.checked_sub(v2 + carry) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    let result = sbc_u8(c, v, v2);
+    write_reg(c, &r1, result);
     1
 }
 
 fn sbc_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = c.get_instr();
-    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
-    match v.checked_sub(v2 + carry) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    let result = sbc_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
@@ -557,23 +488,8 @@ fn sub_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
     let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
     let v = read_reg(c, &r1);
     let v2 = c.memory.read_byte(addr);
-    match v.checked_sub(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    let result = sub_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
@@ -581,24 +497,8 @@ fn sbc_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
     let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
     let v = read_reg(c, &r1);
     let v2 = c.memory.read_byte(addr);
-    let carry = if c.check_flag(ALUFlag::C) { 1 } else { 0 };
-    match v.checked_sub(v2 + carry) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            c.set_flag(ALUFlag::C, false);
-            write_reg(c, &r1, vv);
-        }
-        None => {
-            write_reg(c, &r1, 0);
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    let result = sbc_u8(c, v, v2);
+    write_reg(c, &r1, result);
     2
 }
 
@@ -716,40 +616,14 @@ fn or_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
 fn cp_r8_r8(c: &mut CPU, r1: Reg, r2: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = read_reg(c, &r2);
-    match v.checked_sub(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-        }
-        None => {
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    cp_u8(c, v, v2);
     1
 }
 
 fn cp_r8_n8(c: &mut CPU, r1: Reg) -> u8 {
     let v = read_reg(c, &r1);
     let v2 = c.get_instr();
-    match v.checked_sub(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-        }
-        None => {
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    cp_u8(c, v, v2);
     1
 }
 
@@ -757,21 +631,7 @@ fn cp_r8_r16m(c: &mut CPU, r1: Reg, r2: Reg, r3: Reg) -> u8 {
     let addr = (read_reg(c, &r2) as u16) << 8 | read_reg(c, &r3) as u16;
     let v = read_reg(c, &r1);
     let v2 = c.memory.read_byte(addr);
-    match v.checked_sub(v2) {
-        Some(vv) => {
-            c.set_flag(
-                ALUFlag::H,
-                (0b0001_0000 & v != 0) && (0b0000_1000 & vv != 0) && (0b0001_0000 & vv == 0),
-            );
-            c.set_flag(ALUFlag::Z, vv == 0);
-            c.set_flag(ALUFlag::C, false);
-        }
-        None => {
-            c.set_flag(ALUFlag::C, true);
-            c.set_flag(ALUFlag::Z, true);
-        }
-    }
-    c.set_flag(ALUFlag::N, true);
+    cp_u8(c, v, v2);
     2
 }
 
