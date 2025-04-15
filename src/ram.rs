@@ -1,7 +1,7 @@
 const RAM_SIZE: usize = 0x10000;
 
 #[repr(u16)]
-pub enum MemoryRegisters {
+pub enum MemoryRegister {
     JOYP = 0xFF00,
     SB = 0xFF01,
     SC = 0xFF02,
@@ -79,32 +79,40 @@ impl Memory {
         m
     }
 
+    pub fn register_read(&mut self, r: MemoryRegister) -> u8 {
+        self.read_byte(r as u16)
+    }
+
+    pub fn register_write(&mut self, r: MemoryRegister, v: u8) {
+        self.write_byte(r as u16, v);
+    }
+
     // These could change depending on which GB version
     fn initialize(&mut self) {
-        self.write_byte(MemoryRegisters::NR10 as u16, 0x80);
-        self.write_byte(MemoryRegisters::NR11 as u16, 0xBF);
-        self.write_byte(MemoryRegisters::NR12 as u16, 0xF3);
-        self.write_byte(MemoryRegisters::NR14 as u16, 0xBF);
-        self.write_byte(MemoryRegisters::NR21 as u16, 0x3F);
-        self.write_byte(MemoryRegisters::NR24 as u16, 0xBF);
-        self.write_byte(MemoryRegisters::NR30 as u16, 0x7F);
-        self.write_byte(MemoryRegisters::NR31 as u16, 0xFF);
-        self.write_byte(MemoryRegisters::NR32 as u16, 0x9F);
-        self.write_byte(MemoryRegisters::NR33 as u16, 0xFF);
-        self.write_byte(MemoryRegisters::NR34 as u16, 0xBF);
-        self.write_byte(MemoryRegisters::NR41 as u16, 0xFF);
-        self.write_byte(MemoryRegisters::NR44 as u16, 0xBF);
-        self.write_byte(MemoryRegisters::NR50 as u16, 0x77);
-        self.write_byte(MemoryRegisters::NR51 as u16, 0xF3);
-        self.write_byte(MemoryRegisters::NR52 as u16, 0xF1);
-        self.write_byte(MemoryRegisters::LCDC as u16, 0x91);
-        self.write_byte(MemoryRegisters::BGP as u16, 0xFC);
-        self.write_byte(MemoryRegisters::OBP0 as u16, 0xFF);
-        self.write_byte(MemoryRegisters::OBP1 as u16, 0xFF);
-        self.write_byte(MemoryRegisters::JOYP as u16, 0xCF);
-        self.write_byte(MemoryRegisters::DIV as u16, 0x18);
-        self.write_byte(MemoryRegisters::TAC as u16, 0xF8);
-        self.write_byte(MemoryRegisters::IF as u16, 0xE1);
+        self.write_byte(MemoryRegister::NR10 as u16, 0x80);
+        self.write_byte(MemoryRegister::NR11 as u16, 0xBF);
+        self.write_byte(MemoryRegister::NR12 as u16, 0xF3);
+        self.write_byte(MemoryRegister::NR14 as u16, 0xBF);
+        self.write_byte(MemoryRegister::NR21 as u16, 0x3F);
+        self.write_byte(MemoryRegister::NR24 as u16, 0xBF);
+        self.write_byte(MemoryRegister::NR30 as u16, 0x7F);
+        self.write_byte(MemoryRegister::NR31 as u16, 0xFF);
+        self.write_byte(MemoryRegister::NR32 as u16, 0x9F);
+        self.write_byte(MemoryRegister::NR33 as u16, 0xFF);
+        self.write_byte(MemoryRegister::NR34 as u16, 0xBF);
+        self.write_byte(MemoryRegister::NR41 as u16, 0xFF);
+        self.write_byte(MemoryRegister::NR44 as u16, 0xBF);
+        self.write_byte(MemoryRegister::NR50 as u16, 0x77);
+        self.write_byte(MemoryRegister::NR51 as u16, 0xF3);
+        self.write_byte(MemoryRegister::NR52 as u16, 0xF1);
+        self.write_byte(MemoryRegister::LCDC as u16, 0x91);
+        self.write_byte(MemoryRegister::BGP as u16, 0xFC);
+        self.write_byte(MemoryRegister::OBP0 as u16, 0xFF);
+        self.write_byte(MemoryRegister::OBP1 as u16, 0xFF);
+        self.write_byte(MemoryRegister::JOYP as u16, 0xCF);
+        self.write_byte(MemoryRegister::DIV as u16, 0x18);
+        self.write_byte(MemoryRegister::TAC as u16, 0xF8);
+        self.write_byte(MemoryRegister::IF as u16, 0xE1);
     }
 
     pub(crate) fn read_byte(&mut self, addr: u16) -> u8 {
@@ -125,14 +133,16 @@ impl Memory {
         self.ram[addr as usize] = val;
     }
 
-    pub(crate) fn print_serial(&mut self) {
-        println!("{}", String::from_utf8_lossy(&self.serial_out));
-    }
-
     pub(crate) fn write_word(&mut self, addr: u16, val: u16) {
+        //lower nibble
         let v1: u8 = val as u8;
+        //upper nibble
         let v2: u8 = (val >> 8) as u8;
         self.write_byte(addr, v1);
         self.write_byte(addr + 1, v2);
+    }
+
+    pub(crate) fn print_serial(&mut self) {
+        println!("{}", String::from_utf8_lossy(&self.serial_out));
     }
 }

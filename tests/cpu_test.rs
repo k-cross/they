@@ -773,6 +773,27 @@ fn test_pop_r16() {
     assert_eq!(cpu.registers.b, 0xA);
     assert_eq!(cpu.registers.c, 0x0);
 }
+#[test]
+fn test_push_pop() {
+    let mut cpu = setup(0xC5);
+    cpu.memory.ram[0x1] = 0xC1;
+    cpu.memory.ram[0x100] = 0x0;
+    cpu.registers.b = 0xAA;
+    cpu.registers.c = 0xFF;
+    cpu.registers.sp = 0x0102;
+
+    //push
+    cpu.exec();
+    // reset registers
+    cpu.registers.b = 0;
+    cpu.registers.c = 0;
+    //pop
+    cpu.exec();
+    assert_eq!(cpu.registers.b, 0xAA);
+    assert_eq!(cpu.registers.c, 0xFF);
+    assert_eq!(cpu.memory.ram[0x101], 0xAA);
+    assert_eq!(cpu.memory.ram[0x100], 0xFF);
+}
 
 #[test]
 fn test_jp_a16_cc() {
@@ -846,13 +867,14 @@ fn test_call_a16_cc() {
 #[test]
 fn test_push_r16() {
     let mut cpu = setup(0xC5);
+    cpu.registers.b = 0xAA;
     cpu.registers.sp = 0x0102;
     cpu.exec();
     assert_eq!(cpu.registers.sp, 0x100);
-    assert_eq!(cpu.memory.ram[0x100], 0x2);
-    assert_eq!(cpu.memory.ram[0x101], 0x2);
-    assert_eq!(cpu.registers.b, 0x2);
-    assert_eq!(cpu.registers.c, 0x2);
+    assert_eq!(cpu.memory.ram[0x100], 0x02);
+    assert_eq!(cpu.memory.ram[0x101], 0xAA);
+    assert_eq!(cpu.registers.b, 0xAA);
+    assert_eq!(cpu.registers.c, 0x02);
 }
 
 #[test]

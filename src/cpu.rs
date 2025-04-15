@@ -1,4 +1,7 @@
-use crate::ram::Memory;
+use crate::ram::{
+    Memory,
+    MemoryRegister::{IE, IF},
+};
 use instructions::operations;
 use std::fmt;
 
@@ -166,5 +169,13 @@ impl CPU {
         let opcode = self.get_instr();
         // TODO: implement system ticks and cycles
         let _m_cycles = operations(self, opcode);
+    }
+
+    fn interrupt_handler(&mut self) -> bool {
+        if !self.ime && self.halt {
+            return false;
+        }
+
+        self.memory.register_read(IF) & self.memory.register_read(IE) != 0
     }
 }

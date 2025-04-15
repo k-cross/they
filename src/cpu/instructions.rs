@@ -653,7 +653,7 @@ fn jr_e8(c: &mut CPU) -> u8 {
     // convert to u32 to expand the bit range before converting to i32, so sign is not affected
     c.registers.pc = ((c.registers.pc as u32 as i32) + (offset as i32)) as u16;
     c.memory.print_serial();
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    //std::thread::sleep(std::time::Duration::from_millis(100));
     3
 }
 
